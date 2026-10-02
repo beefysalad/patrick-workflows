@@ -10,3 +10,6 @@
 ## Code
 - Match the surrounding code's style and conventions.
 - Run the project's tests before declaring work done.
+
+## Git
+- No AI-tool attribution: do not add co-author trailers or "generated with" footers to commit messages or PR descriptions.
