@@ -5,11 +5,11 @@ Personal, portable Claude Code workflows packaged as a plugin.
 ## Install
 
 ```
-/plugin marketplace add <github-user>/claude-workflows
+/plugin marketplace add beefysalad/patrick-workflows
 /plugin install patrick-workflows@patrick-workflows
 ```
 
-Local checkout: `/plugin marketplace add /path/to/claude-workflows`
+Local checkout: `/plugin marketplace add /path/to/patrick-workflows`
 
 ## Update
 
