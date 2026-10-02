@@ -1,4 +1,4 @@
-# jp-workflows
+# patrick-workflows
 
 Personal, portable Claude Code workflows packaged as a plugin.
 
@@ -6,7 +6,7 @@ Personal, portable Claude Code workflows packaged as a plugin.
 
 ```
 /plugin marketplace add <github-user>/claude-workflows
-/plugin install jp-workflows@jp-workflows
+/plugin install patrick-workflows@patrick-workflows
 ```
 
 Local checkout: `/plugin marketplace add /path/to/claude-workflows`
@@ -16,8 +16,8 @@ For a private repo, the machine needs git credentials for GitHub.
 ## Update
 
 ```
-/plugin marketplace update jp-workflows
-/plugin update jp-workflows@jp-workflows
+/plugin marketplace update patrick-workflows
+/plugin update patrick-workflows@patrick-workflows
 ```
 
 Restart Claude Code afterwards. Installs are cached by `version`, so a change

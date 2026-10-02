@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Single plugin named `jp-workflows`; repo root is both marketplace and plugin (`source: "./"`).
+- Single plugin named `patrick-workflows`; repo root is both marketplace and plugin (`source: "./"`).
 - Layout exactly: `.claude-plugin/{marketplace,plugin}.json`, `skills/<name>/SKILL.md`, `commands/<name>.md`, `agents/<name>.md`, `hooks/hooks.json`, `templates/{CLAUDE.md,settings.json}`, `README.md`.
 - Names are short kebab-case.
 - Nothing employer-specific or secret anywhere in the repo.
