@@ -1,7 +1,7 @@
 {
   "name": "patrick-workflows",
   "description": "Personal, portable Claude Code workflows.",
-  "owner": { "name": "jpatrickzxc" },
+  "owner": { "name": "John Patrick Ryan Mandal" },
   "plugins": [
     {
       "name": "patrick-workflows",
