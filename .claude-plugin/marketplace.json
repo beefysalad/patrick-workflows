@@ -1,0 +1,11 @@
+{
+  "name": "claude-workflows",
+  "owner": { "name": "jpatrickzxc" },
+  "plugins": [
+    {
+      "name": "claude-workflows",
+      "source": "./",
+      "description": "Personal, portable Claude Code workflows."
+    }
+  ]
+}
