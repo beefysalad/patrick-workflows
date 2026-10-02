@@ -1,0 +1,9 @@
+.DS_Store
+settings.local.json
+**/settings.local.json
+.env
+.env.*
+*.local
+tmp/
+scratch/
+.superpowers/
