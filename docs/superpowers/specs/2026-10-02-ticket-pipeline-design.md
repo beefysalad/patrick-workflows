@@ -167,14 +167,18 @@ Design-changing findings become new rulings and propagate to affected tasks.
    - `lite` → `superpowers:executing-plans` (inline, no per-task reviewers).
    - `standard` → `superpowers:subagent-driven-development` (fresh implementer and reviewer per task).
    In both, all gates run through `run-gate.sh`, `scope-check.sh` is one of the gates, and TDD (red then green) is mandatory.
-3. **Final review:** the superpowers final-review step is performed by `review-mine` instead of a single reviewer (an override, verified in the spike). `review-mine` dispatches `final-reviewer` per concern (`lite`: 1 combined; `standard`: 3 merged concern groups). Reviewers read the workspace review package (diff + rulings + plan), not the whole repo.
-4. **Evidence filter:** every finding needs proof (failing test, command output, file:line plus a concrete trigger). Evidence-free findings are dropped; the rest are deduped and ranked into `review/findings.md`.
-5. **Fix pass:** Critical and Important findings enter one pass, each reproduced by a failing test first, then fixed, then all gates plus scope-check. Stall rule: the same finding returning twice becomes a ruling or stop condition, never a third attempt. Minors are listed as deferred.
-6. **Finish:** final gates compared against the baseline (only new failures count); phase `ready` if green, `blocked` otherwise. No questions.
+3. **Gauntlet loop (final review, performed by `review-mine` instead of a single reviewer; an override verified in the spike).** Principles borrowed from the gauntlet-loop pattern: the builder never grades its own work; critics are fresh and blind; the bar is concrete; the loop runs until a fresh critic finds nothing or the budget ends.
+   1. **Bar:** the acceptance-criteria checks and rulings from the autonomy brief. Critics grade against the bar, not against taste.
+   2. **Round 1 review:** `final-reviewer` per concern (`lite`: 1 combined; `standard`: 3 merged concern groups), each reading one review package (diff + rulings + plan + bar), not the repo.
+   3. **Evidence filter:** every finding needs proof (failing test, command output, file:line plus a concrete trigger). Evidence-free findings are dropped; the rest are deduped and ranked into `review/findings.md`.
+   4. **Fix round:** Critical and Important findings are each reproduced by a failing test first, then fixed, then all gates plus scope-check. Minors are listed as deferred.
+   5. **Blind re-review:** a **new** `final-reviewer` dispatch, never the one that wrote the earlier findings, receives only the changed files, the bar, and the *list* of fixed findings (not the earlier reviewers' reasoning). It checks that each fix holds and that the fix introduced nothing new.
+   6. **Exit when** a re-review finds no Critical or Important findings, **or** the fix-round cap is reached, **or** the stall rule fires: the same finding returning twice becomes a ruling or stop condition, never a third attempt. Hitting the cap with open Critical/Important findings sets `blocked`.
+4. **Finish:** final gates compared against the baseline (only new failures count); phase `ready` if green and the loop exited clean, `blocked` otherwise. No questions.
 
 ## 10. Profiles and cost control (Phase 1)
 
-| Profile | Executor | Final review | Fix passes |
+| Profile | Executor | Gauntlet round 1 | Max fix rounds (each followed by a scoped blind re-review) |
 |---|---|---|---|
 | `lite` | `executing-plans` (inline) | 1 combined reviewer | 1 |
 | `standard` (default) | `subagent-driven-development` | 3 reviewers | 2 |
@@ -228,7 +232,7 @@ After answers: required changes become rulings and a bounded round 2 runs. On ex
 
 ## 16. Phasing
 - **Phase 1 (this spec):** workspace + phase machine, three commands, `ticket-planner`, `final-reviewer`, `review-mine`, `run-gate.sh`, `scope-check.sh`, `lite`/`standard` profiles, handoff, fixture smoke test.
-- **Phase 2:** guardrail hooks (block push/PR before handoff approval, no-attribution guard, block commits on the base branch), `full` profile with `finding-challenger`, parallel independent tasks, local knowledge notes (Obsidian), a pluggable `prove` command for projects with an integration environment.
+- **Phase 2:** guardrail hooks (block push/PR before handoff approval, no-attribution guard, block commits on the base branch), `full` profile adding a `finding-challenger` (blind refutation of each finding) and 5 concerns, parallel independent tasks, local knowledge notes (Obsidian), a pluggable `prove` command for projects with an integration environment.
 
 ## 17. Assumptions to verify first (Spike 0)
 1. A plugin agent with `Skill` in its tools can invoke `superpowers:writing-plans` and write to `~/.claude/tickets/...` (medium confidence).
