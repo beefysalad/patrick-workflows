@@ -60,7 +60,7 @@ One example of each type, to be replaced as real workflows are written:
 - `.gitignore`: `.DS_Store`, `settings.local.json`, `.env*`, scratch folders.
 - `LICENSE`: MIT.
 - Conventional Commit messages (`feat:`, `docs:`, `chore:`); `plugin.json` version bumped on releases and tagged (`v0.1.0`).
-- GitHub remote starts **private**; flip to public only after checking nothing sensitive leaked. Installing a private marketplace on another machine requires git credentials there.
+- GitHub remote is **public**, so the plugin installs on any machine (including a work laptop with a different GitHub account) with no credentials. Content must stay generic and secret-free; the commit author identity and real name in LICENSE/manifests are public.
 
 ## Open items
 

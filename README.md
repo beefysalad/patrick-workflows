@@ -11,8 +11,6 @@ Personal, portable Claude Code workflows packaged as a plugin.
 
 Local checkout: `/plugin marketplace add /path/to/claude-workflows`
 
-For a private repo, the machine needs git credentials for GitHub.
-
 ## Update
 
 ```
