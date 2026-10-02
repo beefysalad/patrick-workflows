@@ -9,7 +9,7 @@ A personal, portable repo of Claude Code workflows that can be installed on any 
 ## Requirements
 
 - Holds four kinds of content: skills, slash commands, subagents, and hooks/settings, plus CLAUDE.md templates.
-- Distributed as a Claude Code plugin with a marketplace manifest, so install is `/plugin marketplace add <source>` then `/plugin install`.
+- Distributed as a Claude Code plugin (named `jp-workflows`; names starting with `claude-` are reserved by Claude Code) with a marketplace manifest, so install is `/plugin marketplace add <source>` then `/plugin install`.
 - One public-safe plugin: nothing employer-specific or secret in the repo. Work-only context stays in that project's own `.claude/`.
 - YAGNI: ship a minimal skeleton, not invented workflows.
 
