@@ -17,7 +17,12 @@ For a private repo, the machine needs git credentials for GitHub.
 
 ```
 /plugin marketplace update jp-workflows
+/plugin update jp-workflows@jp-workflows
 ```
+
+Restart Claude Code afterwards. Installs are cached by `version`, so a change
+only reaches other machines after `version` is bumped in
+`.claude-plugin/plugin.json`.
 
 ## Layout
 
@@ -33,7 +38,7 @@ For a private repo, the machine needs git credentials for GitHub.
 
 1. Create the file in the right directory with kebab-case name and `description` frontmatter.
 2. Run `./scripts/validate.sh`.
-3. Bump `version` in `.claude-plugin/plugin.json` when releasing.
+3. Bump `version` in `.claude-plugin/plugin.json`. This is required for the change to reach other machines.
 4. Commit (`feat:`), push, and `git tag vX.Y.Z`.
 
 ## Rules
