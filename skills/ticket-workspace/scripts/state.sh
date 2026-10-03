@@ -24,7 +24,8 @@ put() {
   mkdir -p "$(dirname "$f")" || exit 2
   if [ -f "$f" ] && grep -q "^$1: " "$f"; then
     tmpf="$f.tmp.$$"
-    awk -v k="$1: " -v v="$2" 'index($0, k) == 1 { print k v; next } { print }' "$f" > "$tmpf" && mv "$tmpf" "$f"
+    # ENVIRON, not awk -v: -v would turn backslashes in the value into escapes.
+    K="$1: " V="$2" awk 'index($0, ENVIRON["K"]) == 1 { print ENVIRON["K"] ENVIRON["V"]; next } { print }' "$f" > "$tmpf" && mv "$tmpf" "$f"
   else
     printf '%s: %s\n' "$1" "$2" >> "$f"
   fi

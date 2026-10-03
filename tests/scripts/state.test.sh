@@ -28,4 +28,7 @@ assert_contains "$(cat "$tmp/ticket ws/ledger.md")" "phase handoff -> pr" "ledge
 
 g="$tmp/other.md"; bash "$ST" "$g" phase approved 2>/dev/null; assert_eq 2 $? "none -> approved refused"
 
+bash "$ST" "$f" set exit_pair "--db-pattern 'test\.db\$'"
+bash "$ST" "$f" set exit_pair "--db-pattern 'app\.db\$'"
+assert_eq "--db-pattern 'app\.db\$'" "$(bash "$ST" "$f" get exit_pair)" "backslashes survive an overwrite"
 finish

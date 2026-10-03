@@ -10,13 +10,21 @@ if [ "${1:-}" = "--deny-file" ]; then
 fi
 [ $# -gt 0 ] || { echo "usage: secret-scan.sh [--deny-file <file>] <file|->..." >&2; exit 2; }
 q="['\"]"   # either quote character
+# Key names that hold secrets, e.g. DB_PASSWORD, SECRET_KEY, AWS_SECRET_ACCESS_KEY, api_key.
+k="[A-Za-z0-9_.-]*(password|passwd|pwd|secret|token|api_?key|access_?key|private_?key)(_?key)?"
+# A value: quoted and 8+ chars, or unquoted 8+ chars that is not a reference ($VAR, ${{ }}, <placeholder>).
+val="($q[^'\"]{8,}$q|[^[:space:]'\"\$<{(][^[:space:]]{7,})"
 RULES="aws-access-key|AKIA[0-9A-Z]{16}
 private-key|-----BEGIN [A-Z ]*PRIVATE KEY-----
 github-token|gh[pousr]_[A-Za-z0-9]{36,}
+github-fine-grained-token|github_pat_[A-Za-z0-9_]{22,}
 slack-token|xox[baprs]-[A-Za-z0-9-]{10,}
 stripe-key|[sr]k_(live|test)_[A-Za-z0-9]{16,}
+anthropic-key|sk-ant-[A-Za-z0-9_-]{20,}
+openai-key|sk-(proj-[A-Za-z0-9_-]{20,}|[A-Za-z0-9]{20,})
+google-api-key|AIza[0-9A-Za-z_-]{35}
 jwt|eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}
-password-assignment|(password|passwd|secret|api_?key|access_?token)$q?[[:space:]]*[:=][[:space:]]*$q[^'\"]{8,}$q
+password-assignment|(^|[^A-Za-z0-9_])$k$q?[[:space:]]*[:=][[:space:]]*$val
 url-credentials|[A-Za-z][A-Za-z0-9+.-]*://[^/[:space:]:@]+:[^/[:space:]@]+@"
 tmpd=$(mktemp -d); trap 'rm -rf "$tmpd"' EXIT
 hits=0

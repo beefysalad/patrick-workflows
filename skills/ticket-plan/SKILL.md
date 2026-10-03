@@ -8,7 +8,7 @@ description: PLAN stage of /ticket - read the ticket, settle acceptance criteria
 Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../ticket-workspace/scripts/state.sh" <WS>/state.md`. Ask the user whatever you need in this stage; after the final approval nothing more is asked until SHIP.
 
 ## 1. Identify the ticket
-- An ID (`ABC-123`, `#42`) or URL: that is the ID. Pasted text with no ID: ask the user for a short ID (suggest `T-<yyyymmdd>-<two words>`).
+- An ID (`ABC-123`, `#42`): that is the ID. A URL: extract the ID from it (the issue key such as `ABC-123` in Jira-style URLs, the number in `.../issues/42` as `#42`) and keep the URL for intake; never use the URL itself as the ID. Pasted text with no ID: ask the user for a short ID (suggest `T-<yyyymmdd>-<two words>`).
 - `WS=$(bash "$SKILL_DIR/../ticket-workspace/scripts/ticket-ws.sh" path <id>)`. If it exists, resume at the first missing step below according to `phase`. Otherwise `bash ".../ticket-ws.sh" init <id>`, then `S set ticket <id>` and `S phase intake`.
 
 ## 2. Intake
