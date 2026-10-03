@@ -18,7 +18,7 @@ Read the ticket with whatever the machine offers: `gh issue view <n> --json titl
 Extract them into `WS/bar.md` as `AC1`, `AC2`, ... followed by a `Deferred:` line. None in the ticket → write them with the user now. The run does not start without them.
 
 ## 4. Branch and checkout
-1. Type: `fix` for bugs, else `feat` (ask if unclear). `BR=$(bash "$SKILL_DIR/../ticket-workspace/scripts/branch-name.sh" <type> <id> <title>)`; show it; the user may rename it.
+1. Type: `fix` for bugs, else `feat` (ask if unclear). `BR=$(bash "$SKILL_DIR/../ticket-workspace/scripts/branch-name.sh" <type> <id> <title>)`; show it; the user may rename it. If the user renames it, check the new name with `git check-ref-format --branch <name>` and ask again if it fails. `S set type <feat|fix>`.
 2. Base: the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, minus `origin/`; else local `main`). If a remote exists, `git fetch origin <base> -q`.
 3. Ask: **main checkout** (recommended) or **a worktree**.
    - Main checkout: requires a clean tree; `git switch -c <BR> origin/<base>` (or `<base>` with no remote). `S set checkout main`.
@@ -38,6 +38,7 @@ Settle each item, then show the whole brief once for approval.
 3. **Depth:** `lite` if the plan has at most 2 tasks and no path matches auth, security, crypto, payment, billing, session, token, password or permission; else `standard`. Show it as "review depth"; the user may raise it. `S set depth <depth>`.
 4. **Budget:** `S set budget_impl_max` = 2 × tasks (lite) or 4 × tasks (standard); `S set budget_review_max` 3 (lite) or 10 (standard); `S set budget_impl_used 0`.
 5. **Exit pair (optional):** if the user wants whole-feature proof, collect `--prove`, `--reset`, `--env-file`, `--db-pattern`; run `bash "$SKILL_DIR/../review-mine/scripts/exit-pair.sh" --check <flags>`. Refused → explain why, then drop it or let the user fix the env file. `S set exit_pair "<flags>"` or `S set exit_pair none`.
+5b. **Graded bar (optional, for UI or anything with a reference):** collect the reference (`image-dir:`, `route:` or `url:`), the routes to capture (write `WS/routes.txt`), and the dev command (use `$PORT`). Write `WS/rubric.md` with the user: 3–6 criteria, each with anchors for 1, 3 and 5; criterion names must not contain ":" (the scorer output parser splits on the first ": "). Write `WS/graded.md` in the format of `review-mine`'s `--graded` flag (margin 0.3, floor 3.5, min 3 unless the user changes them). `S set graded WS/graded.md`. Add `Bash(npx --yes playwright*)` and the dev command to the permission rules.
 6. **Permissions:** print the allow rules this run needs, for the user to add to the project's `.claude/settings.local.json` (never edit settings yourself). Paths under the home directory are written with `~/`; any other absolute path needs a leading `//`.
    - `Read(~/.patrick-workflows/**)`, `Edit(~/.patrick-workflows/**)`
    - `Bash(bash *skills/*/scripts/*)`

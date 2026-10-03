@@ -40,7 +40,7 @@ For each `### Task N` in `plan.md` (and the tasks under `## Round 2` when `round
 
 ## 3. Review loop
 1. `S phase reviewing`.
-2. Invoke `patrick-workflows:review-mine` in embedded mode: base = `base`, `--workspace "<WS>/review-mine"` (round 2: `"<WS>/review-mine-r2"`, so round-1 evidence is kept), `--criteria "<WS>/bar.md"`, `--scope "<WS>/scope.txt"`, `--baseline "<WS>/baseline.md"`, `--gates "<WS>/gates.txt"`, `--gate-timeout <gate_timeout>`, `--depth <depth>`, `--budget <budget_review_max>`, plus the `exit_pair` flags when set. The review covers the whole branch in both rounds, so every bar is judged on the whole feature. When the loop starts a fix round, `S phase fixing`; when it re-reviews, `S phase reviewing`.
+2. Invoke `patrick-workflows:review-mine` in embedded mode: base = `base`, `--workspace "<WS>/review-mine"` (round 2: `"<WS>/review-mine-r2"`, so round-1 evidence is kept), `--criteria "<WS>/bar.md"`, `--scope "<WS>/scope.txt"`, `--baseline "<WS>/baseline.md"`, `--gates "<WS>/gates.txt"`, `--gate-timeout <gate_timeout>`, `--depth <depth>`, `--budget <budget_review_max>`, `--graded "<graded>"` when `graded` is set, plus the `exit_pair` flags when set. The review covers the whole branch in both rounds, so every bar is judged on the whole feature. When the loop starts a fix round, `S phase fixing`; when it re-reviews, `S phase reviewing`.
 3. Read `status` from that review workspace's `state.md`: `ready` → `S phase ready`; anything else → `S phase blocked`.
 
 ## 4. Hand over

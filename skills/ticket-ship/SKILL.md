@@ -11,12 +11,12 @@ Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../tick
 `git branch --show-current` must equal `branch`; if not and the tree is clean, `git switch <branch>`; if dirty, stop and tell the user. Never push any other branch.
 
 ## 1. Write the report (`WS/handoff.md`), in this order
-1. **Outcome:** `READY` or `BLOCKED: <reason>`; depth; tasks done / total; dispatches used / budgets. The PR title type is `fix` if the branch starts with `fix/`, else `feat`.
+1. **Outcome:** `READY` or `BLOCKED: <reason>`; depth; tasks done / total; dispatches used / budgets. The PR title type is the `type` state key.
 2. **Needs your decision:** numbered questions, each with your recommendation, answerable in a few words ("1 keep 2 change: ... 3 yes"). Include deferred Importants, out-of-scope files, unreproduced findings that need a call, blockers, and base drift. The last question is always "Open the draft PR? (yes / no)".
 3. **Unreproduced findings** (security first).
 4. **Severity downgrades.**
 5. **What changed:** `git diff --stat <base>..HEAD`, `git log --oneline <base>..HEAD`, scope classes from the last scope check.
-6. **Evidence:** gates vs baseline (known reds called out); red→green per task from `reports/task-N.md`; review-loop verdicts per round and the exit-pair result from `review-mine/` (and `review-mine-r2/` after a round 2).
+6. **Evidence:** gates vs baseline (known reds called out); red→green per task from `reports/task-N.md`; review-loop verdicts per round, graded scores per round and the exit-pair result from `review-mine/` (and `review-mine-r2/` after a round 2).
 7. **Rulings:** every entry of `rulings.md`, with cost if wrong.
 8. **Base drift:** if a remote exists, `git fetch origin <base_branch> -q` then `git rev-list --count <base>..origin/<base_branch>`. Non-zero → "Base moved by N commits; rebase before the PR?" is one of the questions.
 9. **Draft PR:** title `<type>(<id>): <title>`; body in `WS/pr-body.md` with Summary, Changes, How it was tested (the evidence), and the ticket reference. No tool attribution of any kind.
