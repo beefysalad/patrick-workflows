@@ -41,5 +41,40 @@ ls skills/*/SKILL.md >/dev/null 2>&1 || bad "no skills found"
 ls commands/*.md     >/dev/null 2>&1 || bad "no commands found"
 ls agents/*.md       >/dev/null 2>&1 || bad "no agents found"
 
+# Agents declare their tools and model.
+fm() { sed -n '2,/^---$/p' "$1"; }
+for f in agents/*.md; do
+  [ -e "$f" ] || continue
+  fm "$f" | grep -q '^tools:' || bad "no tools in frontmatter: $f"
+  fm "$f" | grep -q '^model:' || bad "no model in frontmatter: $f"
+done
+
+# Read-only agents must not be able to change anything.
+for f in agents/final-reviewer.md; do
+  [ -f "$f" ] || continue
+  fm "$f" | grep '^tools:' | grep -Eq '(Write|Edit|Bash|NotebookEdit)' && bad "read-only agent has write tools: $f"
+done
+
+# Scripts a skill references must exist next to it.
+for f in skills/*/SKILL.md; do
+  [ -e "$f" ] || continue
+  d=$(dirname "$f")
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    [ -f "$d/$s" ] || bad "missing script $s referenced by $f"
+  done <<EOF
+$(grep -oE 'scripts/[A-Za-z0-9_-]+\.sh' "$f" | sort -u)
+EOF
+done
+
+# No tool attribution anywhere (patterns are split so this file does not match itself).
+attr1='Co-''Authored-By: Claude'
+attr2='Generated with \[Claude'' Code\]'
+while IFS= read -r f; do
+  [ -n "$f" ] && bad "attribution string in $f"
+done <<EOF
+$(grep -rIlE --exclude-dir=.git --exclude-dir=.superpowers -e "$attr1" -e "$attr2" . 2>/dev/null)
+EOF
+
 [ "$fail" -eq 0 ] && echo "OK: repo is valid"
 exit "$fail"
