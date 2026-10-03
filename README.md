@@ -41,12 +41,13 @@ Reviews the current branch with fresh critics, keeps only findings that come wit
              [--prove "<cmd>" [--reset "<cmd>" --env-file <file> --db-pattern <regex>]]
 ```
 
-Working files go to `~/.claude/tickets/<repo>/_reviews/`, never into your project.
+Working files go to `~/.patrick-workflows/tickets/<repo>/_reviews/` (override with `TICKETS_HOME`), never into your project. Claude Code refuses writes under `~/.claude/`, so the workspace lives outside it.
 
 **Permissions.** To run without prompts, allow these in your settings (confirmed in `docs/superpowers/spikes/2026-10-03-phase-1a.md`):
-- `Read(~/.claude/tickets/**)`, `Write(~/.claude/tickets/**)`, `Edit(~/.claude/tickets/**)`
+- `Read(~/.patrick-workflows/**)` and `Edit(~/.patrick-workflows/**)` (Edit rules cover all file-writing tools; Write rules are not matched)
 - `Bash(bash *skills/review-mine/scripts/*)`
 - your project's gate commands, for example `Bash(npm test*)`, `Bash(npm run lint*)`
+- optional: `Bash(gh pr view*)`, so the bar can be built from your PR description
 
 **Exit pair safety.** `--reset` runs only when the database in `--env-file` matches `--db-pattern` and its host is local. Anything else is refused before a reset runs.
 

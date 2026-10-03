@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run one gate command with a hard timeout.
 # Usage: run-gate.sh <name> <timeout-seconds> -- "<command string>"
-# Full output goes to $REVIEW_WS/logs/<name>.log; stdout gets one status line plus the last 30 lines.
+# Full output goes to <workspace>/logs/<name>.log (REVIEW_WS, else the pointer from workspace.sh); stdout gets one status line plus the last 30 lines.
 # Exit codes: 0 pass, 1 fail, 2 timeout, 3 could-not-run.
 set -u
 if [ $# -lt 4 ] || [ "$3" != "--" ]; then
@@ -10,7 +10,10 @@ if [ $# -lt 4 ] || [ "$3" != "--" ]; then
 fi
 name=$1; limit=$2; cmd=$4
 ws=${REVIEW_WS:-}
-[ -n "$ws" ] || { echo "GATE $name: could-not-run (REVIEW_WS not set)"; exit 3; }
+if [ -z "$ws" ]; then   # fall back to the pointer workspace.sh leaves in the repo's git dir
+  ptr=$(git rev-parse --git-path patrick-workflows-review-ws 2>/dev/null) && [ -f "$ptr" ] && ws=$(head -n 1 "$ptr")
+fi
+[ -n "$ws" ] || { echo "GATE $name: could-not-run (no workspace: REVIEW_WS unset and no pointer file)"; exit 3; }
 mkdir -p "$ws/logs" || { echo "GATE $name: could-not-run (cannot create $ws/logs)"; exit 3; }
 log="$ws/logs/$name.log"
 

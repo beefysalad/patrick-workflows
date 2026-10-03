@@ -2,7 +2,7 @@
 # Prove a feature twice in a row, resetting state before each run.
 # Usage: exit-pair.sh --prove "<cmd>" [--reset "<cmd>" --env-file <path> --db-pattern <ERE>
 #                     [--db-var NAME] [--allow-remote]] [--timeout SECONDS]
-# Needs REVIEW_WS. Prints one "EXIT-PAIR: <result> (...)" line.
+# Needs a workspace (REVIEW_WS, else the pointer from workspace.sh). Prints one "EXIT-PAIR: <result> (...)" line.
 # Exit: 0 pass, 1 fail, 3 could-not-run, 4 refused (reset target not proven disposable), 5 flaky.
 set -u
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +20,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$prove" ] || { echo "EXIT-PAIR: could-not-run (--prove is required)"; exit 3; }
-[ -n "${REVIEW_WS:-}" ] || { echo "EXIT-PAIR: could-not-run (REVIEW_WS not set)"; exit 3; }
+if [ -z "${REVIEW_WS:-}" ]; then   # same pointer fallback as run-gate.sh
+  ptr=$(git rev-parse --git-path patrick-workflows-review-ws 2>/dev/null) && [ -f "$ptr" ] && REVIEW_WS=$(head -n 1 "$ptr")
+fi
+[ -n "${REVIEW_WS:-}" ] || { echo "EXIT-PAIR: could-not-run (no workspace: REVIEW_WS unset and no pointer file)"; exit 3; }
+export REVIEW_WS
 refuse() { echo "EXIT-PAIR: refused ($1)"; exit 4; }
 
 # Value of NAME in an env file, read as text (the file is not executed here).

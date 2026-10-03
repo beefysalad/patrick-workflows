@@ -93,7 +93,7 @@ Integration/staging environments; multi-device or multi-model setups; parallel t
 
 ## 5. Workspace (local, outside the repo)
 
-`~/.claude/tickets/<repo-slug>/<ticket-id>/` for tickets; `~/.claude/tickets/<repo-slug>/_reviews/<branch>-<timestamp>/` for standalone `/review-mine`. Outside the repo, so never committed, survives worktree removal, findable from any checkout.
+`~/.patrick-workflows/tickets/<repo-slug>/<ticket-id>/` for tickets; `~/.patrick-workflows/tickets/<repo-slug>/_reviews/<branch>-<timestamp>/` for standalone `/review-mine` (`TICKETS_HOME` overrides the root). Not under `~/.claude/`: Claude Code treats that tree as sensitive and refuses writes there (found in the Phase 1a smoke run). The current workspace path is recorded in the repo's git dir (`.git/patrick-workflows-review-ws`, never committed) so scripts need no environment-variable prefix, which allow rules would not match. Outside the repo, so never committed, survives worktree removal, findable from any checkout.
 
 ```
 state.md       # header below
@@ -323,7 +323,7 @@ ID, URL, or pasted text, read with whatever tool the machine offers, or pasted. 
 ## 17. Assumptions to verify (spike before each phase)
 Before 1a:
 1. Agent frontmatter `model:` pins the model per agent (high).
-2. Read-only agents can read `~/.claude/tickets/...` without prompting once allowlisted (medium).
+2. Read-only agents can read the workspace without prompting once allowlisted (confirmed; workspace moved out of `~/.claude/`, see spike S2b).
 3. Plugin agents ignore `hooks`, `permissionMode`, `mcpServers` frontmatter; nothing depends on them (medium-high).
 Before 1b:
 4. Critics (read-only agents) can view screenshot images via Read; a headless browser is available or installable in the project for `capture.sh` (medium).
@@ -339,7 +339,7 @@ Fallbacks: 2 fails → packages copied into the repo's git-ignored `.superpowers
 2. CLOSE marks Done only when merged, then cleans up.
 3. Review depth chosen automatically; default standard.
 4. Branch naming `<type>/<ticket-id>-<slug>` (user confirmed).
-5. Workspace in `~/.claude/tickets/`, local only.
+5. Workspace in `~/.patrick-workflows/tickets/`, local only (moved from `~/.claude/tickets/`, which Claude Code protects).
 6. Own task driver; superpowers for skills, not control flow (v5).
 7. `/review-mine` built first (v5).
 8. The loop stops only when every declared bar is met, on a plateau (standard), or at the cap: explicit PASS for correctness (deferred Importants excluded); graded = within 0.3 of the reference and ≥ 3.5, no criterion below 3, confirmed by a second scorer; exit pair = two consecutive passing runs against a verified disposable target (v6, v7).

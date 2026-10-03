@@ -13,6 +13,10 @@ out=$(bash "$WS"); code=$?
 assert_eq 0 "$code" "exits 0 in a repo"
 case "$out" in "$TICKETS_HOME/My-Repo/_reviews/feat-abc-1-"*) _ok ;; *) _ko "path shape: $out" ;; esac
 [ -d "$out/logs" ] && _ok || _ko "logs dir created"
+ptr=$(git rev-parse --git-path patrick-workflows-review-ws)
+assert_eq "$out" "$(cat "$ptr")" "pointer file records the workspace"
+out=$(TICKETS_HOME= HOME="$tmp/home" bash "$WS")
+case "$out" in "$tmp/home/.patrick-workflows/tickets/"*) _ok ;; *) _ko "default root outside ~/.claude: $out" ;; esac
 
 git remote add origin "git@github.com:me/shop-app.git"
 out=$(bash "$WS")

@@ -34,7 +34,12 @@ out=$(bash "$GATE" quoted 5 -- 'printf "%s|" "a b" c | tr "|" "\n" | grep -c .')
 assert_eq 0 "$code" "quoted command passes"
 assert_contains "$(cat "$REVIEW_WS/logs/quoted.log")" "2" "quotes and pipes preserved"
 
-out=$(REVIEW_WS= bash "$GATE" nows 5 -- "true"); code=$?
-assert_eq 3 "$code" "missing REVIEW_WS is could-not-run"
+repo="$tmp/repo"; mkdir -p "$repo"; git -C "$repo" init -q
+out=$(cd "$repo" && REVIEW_WS= bash "$GATE" nows 5 -- "true"); code=$?
+assert_eq 3 "$code" "no REVIEW_WS and no pointer is could-not-run"
+printf '%s\n' "$tmp/from pointer" > "$repo/.git/patrick-workflows-review-ws"
+out=$(cd "$repo" && REVIEW_WS= bash "$GATE" ptr 5 -- "echo via-pointer"); code=$?
+assert_eq 0 "$code" "pointer file used when REVIEW_WS is unset"
+assert_contains "$(cat "$tmp/from pointer/logs/ptr.log")" "via-pointer" "log written to pointer workspace"
 
 finish

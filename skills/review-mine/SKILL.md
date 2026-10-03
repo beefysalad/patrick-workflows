@@ -27,7 +27,7 @@ A builder/critic review loop on gauntlet principles: the builder never grades it
 1. Must be inside a git repository with a clean working tree (`git status --porcelain` empty). Otherwise stop: "Commit or stash your changes, then run /review-mine again."
 2. Unless `--no-fix`, refuse to run on the default branch: fixes are committed to the current branch.
 3. If `superpowers:test-driven-development` is not an available skill, stop and tell the user to install the superpowers plugin.
-4. `REVIEW_WS=$(bash "$SKILL_DIR/scripts/workspace.sh")`; set it as the `REVIEW_WS` environment variable for every script call.
+4. Run `bash "$SKILL_DIR/scripts/workspace.sh"`; it prints the workspace path (call it `WS` below) and records it in the repo's git dir, so every other script finds it on its own. Never prefix commands with `REVIEW_WS=...`: allow rules match commands that start with `bash`, and a prefix makes every call prompt. Write workspace files with the Write/Edit tools at `WS/...`.
 5. Write `state.md`:
 ```
 branch: <current branch>
@@ -48,7 +48,7 @@ status: running
 9. Write `bar.md`: the acceptance criteria (given or inferred), plus a `Deferred:` list, initially empty.
 
 ## 3. Round 1
-1. `bash "$SKILL_DIR/scripts/review-package.sh" <base> HEAD "$REVIEW_WS/review/round-1/package"`. Also write `review/round-1/gates.md`: each gate's HEAD status compared with `baseline.md`.
+1. `bash "$SKILL_DIR/scripts/review-package.sh" <base> HEAD "<WS>/review/round-1/package"`. Also write `review/round-1/gates.md`: each gate's HEAD status compared with `baseline.md`.
 2. Dispatch critics **in one message, in parallel**, as `patrick-workflows:final-reviewer` with these models:
    - lite: one `combined` critic, model **opus**, `VERDICT_REQUIRED: yes`.
    - standard: `impact` (**opus**), `security+regression` (**opus**), `requirements+maintainability` (**sonnet**, `VERDICT_REQUIRED: yes`).
@@ -62,13 +62,13 @@ status: running
 
 ## 4. Fix rounds (round N = 2, 3, ...)
 1. Stop if `round >= rounds_max`, or if only the protected slot remains in the budget and you still need a fixer (standard).
-2. Record `pre_fix=$(git rev-parse HEAD)`.
+2. Record the pre-fix commit (`git rev-parse HEAD`) in `state.md` as `pre_fix`.
 3. Open Critical and Important findings go to the fix round; Minors are deferred.
    - standard: dispatch `patrick-workflows:ticket-fixer` (model sonnet, +1 budget) with `FINDINGS` (the open findings file), `GATES` (one `bash "$SKILL_DIR/scripts/run-gate.sh" fix<N>-<name> 900 -- "<command>"` line per gate), `SCOPE` (if given), `REPORT` (`review/round-<N>/fix-report.md`).
    - lite: do the fix round yourself, under `superpowers:test-driven-development`, with the same rules and the same report format.
 4. Re-run every gate yourself as `round<N>-<name>` (never trust the fixer's claim). A gate red on HEAD but not in the baseline becomes a new Critical finding with the log as evidence. If `--scope` was given, run `bash "$SKILL_DIR/scripts/scope-check.sh" <base> <scope>`: a `forbidden` file is a Critical finding ("revert this change"); `out-of-scope` files become rulings.
 5. `UNREPRODUCED` findings leave the loop: listed in the report (security first), never counted as fixed or dismissed.
-6. Fresh re-review: `bash "$SKILL_DIR/scripts/review-package.sh" "$pre_fix" HEAD "$REVIEW_WS/review/round-<N>/package"`, then dispatch `patrick-workflows:final-reviewer` (model sonnet, +1 budget; use the protected slot if it is the last dispatch) with `MODE: re-review`, `PACKAGE`, `BAR`, `GATES`, `VERDICT_REQUIRED: yes`, and `FINDINGS` = only IDs and titles of what the fix round touched (no earlier reasoning).
+6. Fresh re-review: `bash "$SKILL_DIR/scripts/review-package.sh" <pre_fix sha> HEAD "<WS>/review/round-<N>/package"`, then dispatch `patrick-workflows:final-reviewer` (model sonnet, +1 budget; use the protected slot if it is the last dispatch) with `MODE: re-review`, `PACKAGE`, `BAR`, `GATES`, `VERDICT_REQUIRED: yes`, and `FINDINGS` = only IDs and titles of what the fix round touched (no earlier reasoning).
 7. **Evidence outranks opinion:** a behavioral finding whose red test now passes stays addressed unless the critic gave a NEW-TRIGGER; a NEW-TRIGGER becomes a new finding (round-N ID).
 8. New findings go through the evidence filter and get IDs `F<N>-<n>`.
 9. **Progress** (standard only): progress = the count of open Critical + Important findings fell by at least 1. Two consecutive rounds without progress → stop the loop (plateau).
