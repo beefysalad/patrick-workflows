@@ -27,4 +27,7 @@ out=$(check); assert_eq 0 $? "cross-skill reference to an existing script is val
 
 fresh; echo 'Run `bash "$SKILL_DIR/../ticket-workspace/scripts/nope.sh"`.' >> "$tmp/repo/skills/review-mine/SKILL.md"
 out=$(check); assert_contains "$out" "missing script ../ticket-workspace/scripts/nope.sh" "missing cross-skill script"
+
+fresh; sed -i.bak 's/^tools: Read, Glob$/tools: Read, Glob, Write/' "$tmp/repo/agents/ui-scorer.md"; rm -f "$tmp/repo/agents/"*.bak
+out=$(check); assert_contains "$out" "read-only agent has write tools: agents/ui-scorer.md" "ui-scorer is read-only"
 finish
