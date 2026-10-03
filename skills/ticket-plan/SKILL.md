@@ -44,6 +44,7 @@ Settle each item, then show the whole brief once for approval.
    - `Bash(bash *skills/*/scripts/*)`
    - each gate command, e.g. `Bash(npm test*)`
    - `Bash(git add*)`, `Bash(git commit*)`, `Bash(git diff*)`, `Bash(git log*)`, `Bash(git status*)`, `Bash(git switch*)`, `Bash(git rev-parse*)`
+   - for `/ticket` CLOSE (used after the merge): `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue close*)`
 7. **Rulings:** record every decision made in this stage in `WS/rulings.md` with `source: user`.
 
 Ask for one approval of the brief. On approval:

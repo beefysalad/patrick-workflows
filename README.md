@@ -43,7 +43,7 @@ only reaches other machines after `version` is bumped in
 - **BUILD (on its own):** one fresh implementer and reviewer per task, test first, gates re-run by the orchestrator, then the `/review-mine` loop. Asks nothing.
 - **SHIP (with you):** one report with numbered questions. Ask for changes and it runs a second round; say yes and it scans for secrets, then opens a draft PR.
 
-Run `/ticket <id>` again at any time to resume where it stopped. If another plugin also defines `/ticket` or `/review-mine`, use the namespaced form: `/patrick-workflows:ticket`, `/patrick-workflows:review-mine`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. Marking the ticket done after merge (CLOSE) and UI grading come in later versions.
+Run `/ticket <id>` again at any time to resume where it stopped. If another plugin also defines `/ticket` or `/review-mine`, use the namespaced form: `/patrick-workflows:ticket`, `/patrick-workflows:review-mine`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. After the PR is merged, run `/ticket <id>` once more: it marks the ticket done and cleans up.
 
 Optional: list company names and internal hostnames, one per line, in your work project's `.claude/patrick-workflows-deny.txt`. SHIP refuses to open a PR whose body or diff contains them.
 
@@ -54,9 +54,11 @@ Permission rules: absolute paths outside your home directory need a leading `//`
 Reviews the current branch with fresh critics, keeps only findings that come with evidence, fixes Critical and Important ones with a failing test first, re-reviews the fixes with a new critic, and stops at an explicit PASS, a plateau, or the budget. It commits fixes to your branch and never pushes.
 
 ```
-/review-mine [base] [--depth lite|standard] [--criteria <file>] [--scope <file>] [--no-fix]
-             [--prove "<cmd>" [--reset "<cmd>" --env-file <file> --db-pattern <regex>]]
+/review-mine [base] [--depth lite|standard] [--criteria <file>] [--scope <file>] [--graded <graded.md>]
+             [--no-fix] [--prove "<cmd>" [--reset "<cmd>" --env-file <file> --db-pattern <regex>]]
 ```
+
+**UI grading.** For features with a visual or interactive component, pass a graded scoring configuration file. The file defines reference screenshots (`image-dir:`, `route:` or `url:`), routes to capture, dev command, rubric (3–6 criteria with anchors for scores 1, 3, and 5), and thresholds (margin 0.3, floor 3.5, min 3). Screenshots use Playwright via `npx --yes playwright screenshot --channel chrome` (light theme), falling back to headless Chrome (light only). Requires `Bash(npx --yes playwright*)` permission rule.
 
 Working files go to `~/.patrick-workflows/tickets/<repo>/_reviews/` (override with `TICKETS_HOME`), never into your project. Claude Code refuses writes under `~/.claude/`, so the workspace lives outside it.
 
@@ -65,6 +67,7 @@ Working files go to `~/.patrick-workflows/tickets/<repo>/_reviews/` (override wi
 - `Bash(bash *skills/review-mine/scripts/*)`
 - your project's gate commands, for example `Bash(npm test*)`, `Bash(npm run lint*)`
 - optional: `Bash(gh pr view*)`, so the bar can be built from your PR description
+- for `/ticket` CLOSE: `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue close*)`
 
 **Exit pair safety.** `--reset` runs only when the database in `--env-file` matches `--db-pattern` and its host is local. Anything else is refused before a reset runs.
 
