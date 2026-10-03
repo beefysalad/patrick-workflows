@@ -76,5 +76,12 @@ done <<EOF
 $(grep -rIlE --exclude-dir=.git --exclude-dir=.superpowers -e "$attr1" -e "$attr2" . 2>/dev/null)
 EOF
 
+# A command with the same name as a skill shadows it: the skill's instructions never load.
+for f in commands/*.md; do
+  [ -e "$f" ] || continue
+  n=$(basename "$f" .md)
+  [ -d "skills/$n" ] && bad "command shadows skill: $n (delete or rename commands/$n.md)"
+done
+
 [ "$fail" -eq 0 ] && echo "OK: repo is valid"
 exit "$fail"
