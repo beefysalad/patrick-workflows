@@ -13,6 +13,10 @@ case $cmd in
   prepare)
     ref=${1:-}; ours=${2:-}; out=${3:-}
     [ -d "$ref" ] && [ -d "$ours" ] && [ -n "$out" ] || { echo "usage: graded-ab.sh prepare <reference-dir> <ours-dir> <out-dir>" >&2; exit 2; }
+    # Strip trailing slashes from out
+    while [ -n "${out%/}" ] && [ "$out" != "${out%/}" ]; do
+      out="${out%/}"
+    done
     side=${GRADED_AB_FORCE:-}
     if [ -z "$side" ]; then if [ $((RANDOM % 2)) -eq 0 ]; then side=A; else side=B; fi; fi
     other=B; [ "$side" = B ] && other=A
@@ -41,11 +45,29 @@ $1"; shift ;;
       [ -f "$f" ] || { echo "scores not found: $f" >&2; exit 2; }
       k=$((k + 1))
       res=$(awk -v ours="$ours" -v margin="$margin" -v floor="$floor" -v min="$min" '
-        /^[AB] [^:]+:[[:space:]]*[0-9.]+[[:space:]]*$/ {
-          s = $1; v = $NF + 0; sum[s] += v; cnt[s]++
-          if (s == ours && (!seen || v < lo)) { lo = v; seen = 1 }
+        BEGIN { bad = 0 }
+        /^[AB] [^:]+: [0-9]+\.[0-9]+$/ || /^[AB] [^:]+: [0-9]+$/ {
+          # Valid score line: A/B, space, criterion, colon, space, number (int or decimal)
+          s = substr($0, 1, 1)
+          rest = $0
+          sub(/^[AB] [^:]+: */, "", rest)
+          v = rest + 0
+          # Validate score range [0, 5]
+          if (v < 0 || v > 5) { bad = 1 }
+          if (!bad) { sum[s] += v; cnt[s]++; if (s == ours && (!seen || v < lo)) { lo = v; seen = 1 } }
+          next
+        }
+        /^[AB] / {
+          # Line starts with A or B but does not match valid score format
+          bad = 1
+          next
+        }
+        {
+          # Other lines (e.g., GAP ...) are ignored
+          next
         }
         END {
+          if (bad) { print "bad"; exit }
           ref = (ours == "A") ? "B" : "A"
           if (cnt[ours] == 0 || cnt[ref] == 0 || cnt[ours] != cnt[ref]) { print "bad"; exit }
           o = sum[ours] / cnt[ours]; r = sum[ref] / cnt[ref]; why = ""

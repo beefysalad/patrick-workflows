@@ -33,4 +33,26 @@ printf 'A x: 4\n' > "$tmp/bad.txt"
 bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/bad.txt" >/dev/null 2>&1; assert_eq 2 $? "missing side is bad input"
 printf 'A x: 4\nA y: 4\nB x: 4\n' > "$tmp/bad2.txt"
 bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/bad2.txt" >/dev/null 2>&1; assert_eq 2 $? "unequal counts is bad input"
+
+# Test malformed score (no space after colon)
+printf 'A x:5\nA y:5\nB x: 4\nB y: 4\n' > "$tmp/bad3.txt"
+bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/bad3.txt" >/dev/null 2>&1; assert_eq 2 $? "malformed score (no space) is bad input"
+
+# Test non-numeric score
+printf 'A x: 5\nA y: 5\nB x: n/a\nB y: 4\n' > "$tmp/bad4.txt"
+bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/bad4.txt" >/dev/null 2>&1; assert_eq 2 $? "non-numeric score is bad input"
+
+# Test out-of-range score (>5)
+printf 'A x: 5\nA y: 5\nB x: 45\nB y: 4\n' > "$tmp/bad5.txt"
+bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/bad5.txt" >/dev/null 2>&1; assert_eq 2 $? "score out of range (45) is bad input"
+
+# Test invalid score format (1.2.3)
+printf 'A x: 5\nA y: 5\nB x: 1.2.3\nB y: 4\n' > "$tmp/bad6.txt"
+bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/bad6.txt" >/dev/null 2>&1; assert_eq 2 $? "invalid score format (1.2.3) is bad input"
+
+# Test trailing slash on out-dir
+GRADED_AB_FORCE=A bash "$GA" prepare "$tmp/ref" "$tmp/ours" "$tmp/slash/"; assert_eq 0 $? "prepare with trailing slash exits 0"
+assert_eq "ours=A" "$(cat "$tmp/slash.mapping")" "mapping at sibling of slash dir"
+[ -e "$tmp/slash/.mapping" ] || [ -e "$tmp/slash/mapping" ] && _ko "mapping inside slash dir" || _ok
+
 finish
