@@ -14,6 +14,7 @@ A builder/critic review loop on gauntlet principles: the builder never grades it
 - Never push. Never edit settings. Never downgrade a Critical. Commit messages carry no trailers.
 - Every claim in the report must point to a file in the workspace (a log, a finding, a fixer report).
 - Append one line to `ledger.md` for every completed step: `<UTC time> <step> <result>`.
+- Ledger lines use `date -u +%Y-%m-%dT%H:%M:%SZ` for the time; never type a time by hand.
 
 ## 1. Parse arguments
 - `base`: first positional argument; default `git merge-base HEAD origin/<default>` where `<default>` comes from `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback: the local `main` branch, then local `master`, when there is no `origin`).
@@ -22,7 +23,8 @@ A builder/critic review loop on gauntlet principles: the builder never grades it
 - `--scope <file>`: scope file for `scope-check.sh`. Optional.
 - `--no-fix`: run round 1 only and report.
 - `--prove/--reset/--env-file/--db-pattern/--allow-remote`: passed straight to `exit-pair.sh`.
-- Embedded mode (used by `/ticket`): `--workspace <dir>` uses that directory (`bash "$SKILL_DIR/scripts/workspace.sh" --at <dir>`) instead of creating one; `--baseline <file>` copies that file to `<WS>/baseline.md` and skips setup step 7; `--budget <n>` and `--rounds-max <n>` override the depth defaults; `--gates <file>` (lines `<name>: <command>`) and `--gate-timeout <seconds>` replace gate detection, so setup step 6 is skipped and the review loop runs exactly the gates the caller agreed, under the same names as its baseline. In embedded mode the caller has already checked the tree and branch, so setup steps 0–2 are skipped.
+- `--graded <graded.md>`: adds the graded (UI) bar (section 4b). Adds 5 to the review budget (3 for lite).
+- Embedded mode (used by `/ticket`): `--workspace <dir>` uses that directory (`bash "$SKILL_DIR/scripts/workspace.sh" --at <dir>`) instead of creating one; `--baseline <file>` copies that file to `<WS>/baseline.md` and skips setup step 7; `--budget <n>` and `--rounds-max <n>` override the depth defaults; `--gates <file>` (lines `<name>: <command>`) and `--gate-timeout <seconds>` replace gate detection, so setup step 6 is skipped and the review loop runs exactly the gates the caller agreed, under the same names as its baseline. In embedded mode the caller has already checked the tree and branch, so setup steps 0–2 are skipped. If `<WS>/state.md` already exists with `status: running`, this is a rerun after a crash: keep its `budget_used`, `round` and findings and continue from them.
 
 ## 2. Setup (the only point where you may stop with a message to the user)
 0. **Recover from an interrupted run first.** If `$(git rev-parse --git-path patrick-workflows-review-ws)` exists, read the workspace path in it. If that workspace's `state.md` says `status: running` and HEAD is detached, run `git checkout -- . && git clean -fd` (this only discards what a baseline gate wrote on the detached base commit) and then `git switch <restore_branch>`. Note the recovery in the new run's report.
@@ -76,7 +78,19 @@ status: running
 7. **Evidence outranks opinion:** a behavioral finding whose red test now passes stays addressed unless the critic gave a NEW-TRIGGER; a NEW-TRIGGER becomes a new finding (round-N ID).
 8. New findings go through the evidence filter and get IDs `F<N>-<n>`.
 9. **Progress** (standard only): progress = the count of open Critical + Important findings fell by at least 1. Two consecutive rounds without progress → stop the loop (plateau).
-10. Exit the loop when VERDICT is PASS and no Critical or Important is open; otherwise next round.
+10. Exit the loop when VERDICT is PASS, no Critical or Important is open, and the graded bar is met (when `--graded` was given); otherwise next round.
+
+## 4b. Graded bar (only with `--graded`)
+Run in round 1 and after every fix round, before the re-review decides the exit.
+1. `bash "$SKILL_DIR/scripts/dev-server.sh" start "<dev>" 120`. `could-not-run` → the graded bar is `could-not-run` (reported, never skipped silently); go on without it.
+2. `bash "$SKILL_DIR/scripts/capture.sh" <url> <routes> "<WS>/graded/round-<N>/ours"`. Reference, once per run: `route:` → capture `<url><path>` the same way into `<WS>/graded/reference`; `url:` → capture that URL; `image-dir:` → use the folder as-is.
+3. Always `bash "$SKILL_DIR/scripts/dev-server.sh" stop` before going on, even after a failure.
+4. `bash "$SKILL_DIR/scripts/graded-ab.sh" prepare "<WS>/graded/reference" "<WS>/graded/round-<N>/ours" "<WS>/graded/round-<N>/ab"`.
+5. Dispatch `patrick-workflows:ui-scorer` (model opus, +1 budget) with `DIR_A`, `DIR_B` (the two `ab` folders) and `RUBRIC`. Save its output to `<WS>/graded/round-<N>/score-1.txt`.
+6. `bash "$SKILL_DIR/scripts/graded-ab.sh" verdict "<WS>/graded/round-<N>/ab.mapping" score-1.txt --margin <m> --floor <f> --min <n>`. If it passes, dispatch a second, fresh `ui-scorer` (+1) into `score-2.txt` and run the verdict on both files; the bar is met only if both pass.
+7. Not met: read the mapping to know which side is ours, turn each `GAP <ours> <criterion>` line into a finding (Kind: visual, Severity: Important, Location: the route and viewport, Trigger/Expected/Actual from the gap) for the next fix round. The fixer verifies visual fixes by recapturing, not with a red test.
+8. Progress for the plateau rule (standard and full): ours overall rising by at least 0.2. Two rounds without that → stop and report the best score.
+9. The report's Bars section lists ours and reference per round, e.g. `Graded: 3.4 → 3.9 → 4.2 (reference 4.4, margin 0.3)`.
 
 ## 5. Exit pair (only if `--prove` was given)
 Run after the loop exits with PASS: `bash "$SKILL_DIR/scripts/exit-pair.sh" --label exit-pair-r<round> --prove ... [reset options]`.
@@ -89,7 +103,7 @@ The result line is also appended to `<WS>/exit-pair.txt`; cite it in the report.
 ## 6. Finish
 1. Run every gate one last time as `final-<name>`; compare with `baseline.md`.
 2. Outcome:
-   - **ready**: no new reds vs baseline, VERDICT PASS, no open Critical, exit pair met (if requested).
+   - **ready**: no new reds vs baseline, VERDICT PASS, no open Critical, exit pair met (if requested), and the graded bar is met (when `--graded` was given).
    - **blocked**: anything else. Open Importants at the cap are deferred with a ruling and listed as questions.
 3. Write `report.md`, in this order:
    1. Outcome line: `READY` or `BLOCKED: <reason>`, depth, rounds used, dispatches used / budget.
