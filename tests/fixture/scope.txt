@@ -1,0 +1,5 @@
+# Scope for the fixture's feat/discounts branch
+allow: src/**
+allow: test/**
+allow: e2e/**
+forbid: src/billing/**
