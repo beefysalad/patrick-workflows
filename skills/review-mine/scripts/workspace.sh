@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Create a standalone review workspace and print its path.
+# Location: ${TICKETS_HOME:-~/.claude/tickets}/<repo-slug>/_reviews/<branch>-<UTC timestamp>
+set -u
+root=${TICKETS_HOME:-$HOME/.claude/tickets}
+top=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "not a git repository" >&2; exit 1; }
+url=$(git config --get remote.origin.url 2>/dev/null || true)
+if [ -n "$url" ]; then slug=$(basename "$url" .git); else slug=$(basename "$top"); fi
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" = "HEAD" ] && branch="detached-$(git rev-parse --short HEAD)"
+safe() { printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '-'; }
+dir="$root/$(safe "$slug")/_reviews/$(safe "$branch")-$(date -u +%Y%m%dT%H%M%SZ)"
+n=1; candidate=$dir
+while [ -e "$candidate" ]; do n=$((n + 1)); candidate="$dir-$n"; done
+mkdir -p "$candidate/logs" || exit 1
+printf '%s\n' "$candidate"
