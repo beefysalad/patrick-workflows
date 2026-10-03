@@ -31,14 +31,15 @@ case ${1:-} in
     if alive && [ -f "$portf" ]; then echo "DEV-SERVER: up $(url)"; exit 0; fi
     stop_server   # clears a stale PID file
     port=$(free_port) || { echo "DEV-SERVER: could-not-run (no free port)"; exit 3; }
+    trap 'stop_server; exit 3' INT TERM
     exec 3>&2 2>/dev/null   # keep the shell's job notices out of the output
-    PORT=$port perl -e 'setpgrp(0, 0); exec @ARGV' bash -c "$cmd" > "$ws/logs/dev-server.log" 2>&1 &
+    PORT=$port perl -e 'setpgrp(0, 0); exec @ARGV' bash -c "$cmd" > "$ws/logs/dev-server.log" 2>&1 3>&- &
     echo $! > "$pidf"; echo "$port" > "$portf"
     exec 2>&3 3>&-
     ticks=0
     while [ "$ticks" -lt $((limit * 5)) ]; do
       if ! alive; then stop_server; echo "DEV-SERVER: could-not-run (exited; see logs/dev-server.log)"; exit 3; fi
-      if curl -s -o /dev/null --max-time 1 "$(url)/"; then echo "DEV-SERVER: up $(url)"; exit 0; fi
+      if curl -s -o /dev/null --max-time 1 "$(url)/"; then trap - INT TERM; echo "DEV-SERVER: up $(url)"; exit 0; fi
       sleep 0.2; ticks=$((ticks + 1))
     done
     stop_server 2>/dev/null

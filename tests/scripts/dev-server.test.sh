@@ -30,4 +30,20 @@ assert_eq 3 "$code" "never-ready server is could-not-run"
 assert_contains "$out" "could-not-run" "reason printed"
 [ $(( $(date +%s) - start )) -lt 8 ] && _ok || _ko "timeout respected"
 pgrep -f "sleep 30" >/dev/null && _ko "never-ready process left running" || _ok
+
+# Test 1: leaked fd 3 should not hang caller when capturing output with 2>&1
+out=$(perl -e 'alarm 10; exec @ARGV' bash "$DS" start "$srv" 10 2>&1); code=$?
+assert_eq 0 "$code" "fd 3 leak test returns successfully"
+assert_contains "$out" "DEV-SERVER: up http://127.0.0.1:" "fd 3 test prints the up line"
+bash "$DS" stop
+
+# Test 2: signal trap during start should clean up server on interrupt
+bash "$DS" start "sleep 45" 30 &
+bg_pid=$!
+sleep 1
+kill -TERM $bg_pid 2>/dev/null
+wait $bg_pid
+pgrep -f "sleep 45" >/dev/null && _ko "server process still running after SIGTERM" || _ok
+[ -f "$REVIEW_WS/dev-server.pid" ] && _ko "pid file still exists after SIGTERM" || _ok
+
 finish
