@@ -12,4 +12,6 @@ long=$(bash "$BN" feat ABC-1 "a very long title that keeps going and going well 
 case "$long" in *-) _ko "trailing dash: $long" ;; *) _ok ;; esac
 git check-ref-format --branch "$long" >/dev/null && _ok || _ko "valid ref: $long"
 bash "$BN" wip ABC-1 "x" >/dev/null 2>&1; assert_eq 2 $? "unknown type rejected"
+bash "$BN" feat "#" "x" >/dev/null 2>&1; assert_eq 2 $? "ID that slugs to nothing is refused"
+bash "$BN" feat "票据" "x" >/dev/null 2>&1; assert_eq 2 $? "non-Latin ID is refused"
 finish

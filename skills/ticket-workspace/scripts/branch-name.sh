@@ -7,7 +7,9 @@ type=${1:-}; id=${2:-}
 shift 2
 case $type in feat|fix|chore|docs|refactor|test|perf) ;; *) echo "unknown type: $type" >&2; exit 2 ;; esac
 slug() { printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]' | LC_ALL=C sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'; }
-name="$type/$(slug "$id")"
+idslug=$(slug "$id")
+[ -n "$idslug" ] || { echo "ticket ID has no usable characters: $id (use a Latin ID such as T-1)" >&2; exit 2; }
+name="$type/$idslug"
 t=$(slug "$*")
 [ -n "$t" ] && name="$name-$t"
 name=$(printf '%s' "$name" | cut -c1-60 | sed -E 's/-+$//')
