@@ -1,112 +1,106 @@
-# Ticket Pipeline: Architecture (v4)
+# Ticket Pipeline: Architecture (v5)
 
-Date: 2026-10-02
-Status: Draft for review (v4: single `/ticket` command with stages; v3 incorporated two independent architecture reviews)
+Date: 2026-10-03
+Status: Draft for review (v5: own task driver, gauntlet rule fixes, `/review-mine` built first; incorporates three independent reviews)
 Plugin: `patrick-workflows` (this repo)
 
 ## 1. Purpose
 
-A repeatable, mostly autonomous pipeline that takes one ticket from "read it" to "PR ready", with the `superpowers` plugin as the engine. Human input is front-loaded (brainstorm, plan, rules) and concentrated again at the end (one report, one PR decision). In between, the pipeline asks nothing.
+A repeatable, mostly autonomous pipeline that takes one ticket from "read it" to "merged and closed". Human input is front-loaded (brainstorm, plan, rules) and concentrated again at the end (one report, one PR decision). In between, the pipeline asks nothing.
 
-**Design stance: a thin layer over superpowers.** Superpowers provides brainstorming, planning, and autonomous task execution (fresh implementer and reviewer per task, a ledger, rulings, stop conditions). This plugin adds what superpowers lacks: ticket intake, a pre-approved autonomy contract, baseline/permission/scope safety, a **gauntlet loop** for the final review, and a human handoff that ends in a PR.
+**Design stance.** Superpowers skills do the thinking work: brainstorming, planning (writing-plans), test-driven development, debugging, verification. This plugin owns the orchestration: ticket intake, the autonomy contract, its own task driver and ledger, baseline/permission/scope safety, a builder/critic review loop, and the human handoff. It does not steer superpowers' own executors, because depending on another plugin's ledger format and end-of-plan behavior would break silently on its updates.
+
+**Naming.** The review loop is a builder/critic loop built on gauntlet principles: the builder never grades its own work, critics are fresh, the bar is concrete, and the loop runs until clean or out of budget. It has no reference-based A/B comparison; for tickets the acceptance criteria are the bar.
 
 ### Success criteria
-- After the plan and rules are approved, nothing is asked until the final report, except the four stop conditions (section 7).
-- Every claim in the final report is backed by evidence on disk (gate logs, red-to-green output), not a subagent's say-so.
-- A crash, `/clear`, or new session resumes mid-ticket from files alone.
-- Cost is bounded per ticket by profile and budget (section 10).
-- The repo stays public-safe, and no ticket content reaches the project's git history or PR except the code itself.
+- After plan and rules are approved, nothing is asked until the report, except the four stop conditions (section 7).
+- Every claim in the report is backed by evidence on disk (gate logs, red-to-green output).
+- A crash, `/clear`, or new session resumes from files alone.
+- Cost is bounded per ticket by review depth and budget (section 10).
+- No ticket content reaches the project's git history or PR except the code itself. The repo stays public-safe.
 
 ### Non-goals (Phase 1)
-Integration/staging environments; multi-device or multi-model setups; parallel task execution; guardrail hooks; Obsidian or any knowledge base; the adversarial challenger and the `full` profile; batching several tickets per run. All Phase 2 (section 16).
+Integration/staging environments; multi-device or multi-model setups; parallel tasks; guardrail hooks; Obsidian; a `full` depth with challenger; several tickets per run. See section 16.
 
 ## 2. Constraints
 - All Claude, one machine, Claude Code only.
-- Requires the `superpowers` plugin; commands fail fast with install instructions if it is missing.
+- Requires the `superpowers` plugin; fail fast with install instructions if missing.
 - Ticket tracker unknown and machine-specific: work from an ID, URL, or pasted text.
-- No tool attribution in commits or PR bodies (see `templates/CLAUDE.md`).
-- Plugin components are markdown/JSON plus a few small bash helpers.
+- No tool attribution in commits or PR bodies.
+- Plugin components are markdown/JSON plus small bash helpers.
 
 ## 3. Approaches considered
 
 | Approach | Verdict |
 |---|---|
 | A. One mega-orchestrator agent holding all subagent context | Rejected: context bloat; subagents cannot spawn subagents. |
-| B. One `/ticket` command routing to stage skills, thin main-session orchestrator, external file workspace, task execution delegated to superpowers (chosen) | Resumable, cheap to build, inherits superpowers' improvements. |
-| B0. Our own implementer/reviewer loop (v1 draft) | Rejected: duplicated superpowers' executor, ledger, rulings and stop rules. |
-| C. External script driving headless `claude -p` | Deferred: more deterministic, but loses interactivity and subagent tooling. |
+| B1. Delegate task execution to superpowers' executors and override their ending | Rejected (v5): requires parsing and steering another plugin's ledger and end-of-plan steps; fragile across its updates; needs a harvest step and two ledgers. |
+| **B2. `/ticket` router + stage skills + own thin task driver + external workspace (chosen)** | One ledger we own; superpowers used for skills, not for control flow. |
+| C. External script driving headless `claude -p` | Deferred. |
 
-## 4. Component overview
+## 4. Components
 
 ### Command surface
-One entry point. The workspace records the ticket's phase, so the user never chooses the next command:
-
 ```
 /ticket <id | url | pasted text>
-  PLAN   (interactive)  intake → acceptance criteria → branch/worktree → brainstorm → plan → rulings + autonomy brief
-                        ◄ user approves → BUILD starts immediately, no new command
-  BUILD  (autonomous)   pre-flight → tasks via superpowers executor → harvest → GAUNTLET LOOP → report
-  SHIP   (interactive)  handoff report + §0 questions ◄ user answers → (round 2) → draft PR on authorization
-
-/ticket <id>            run again at any time: resumes the current stage, shows the report, or —
+  PLAN   (interactive)  intake → acceptance criteria → branch/worktree → brainstorm → plan → autonomy brief
+                        ◄ user approves → BUILD starts immediately
+  BUILD  (autonomous)   pre-flight → task driver → review loop (review-mine) → ready | blocked
+  SHIP   (interactive)  report + numbered questions ◄ user answers → (round 2) → draft PR on authorization
+/ticket <id>            run again any time: resumes, shows the report, or —
   CLOSE  (autonomous)   once the PR is merged — sets the ticket to Done and cleans up
-
-/review-mine [base]     the gauntlet loop on its own, for any branch
+/review-mine [base]     the review loop on its own, on any branch
 ```
 
 | Stage | Mode | Accepts phase | Sets phase |
 |---|---|---|---|
 | PLAN | interactive | (none), `intake`, `designed`, `planned` | `intake` → `designed` → `planned` → `approved` |
-| BUILD | autonomous | `approved`, `round2` | `implementing` → `reviewing` ⇄ `fixing` → `ready`, or `blocked` |
+| BUILD | autonomous | `approved`, `round2` | `implementing` → `reviewing` ⇄ `fixing` → `ready` or `blocked` |
 | SHIP | interactive | `ready`, `blocked` | `handoff` → (`round2` → BUILD) → `pr` |
-| CLOSE | autonomous | `pr` | `closed` (only if the PR is merged; otherwise reports status and changes nothing) |
+| CLOSE | autonomous | `pr` | `closed` only if merged; otherwise reports PR state, changes nothing |
 
-### Commands (`commands/`)
+### Commands
 | Command | Responsibility |
 |---|---|
-| `ticket` | Router: resolve the workspace, read the phase, run the matching stage skill. Refuses nothing; always does the next valid thing. |
-| `review-mine` | Thin wrapper invoking the `review-mine` skill on the current branch. |
+| `ticket` | Resolve the workspace, read the phase, run the matching stage skill. |
+| `review-mine` | Run the `review-mine` skill on the current branch against a base (default: merge-base with the default branch). |
 
-### Agents (`agents/`)
+### Agents
 | Agent | Role | Model | Tools |
 |---|---|---|---|
-| `ticket-planner` | Runs `superpowers:writing-plans` on the approved design; saves into the workspace; never commits; never asks the execution-method question; returns plan path and summary. | Opus | Read, Write, Grep, Glob, Skill |
-| `final-reviewer` | Gauntlet critic, parameterized by concern (`impact`, `security`, `regression`, `requirements`, `maintainability`, or `combined`) or by mode `re-review`. Read-only. | Sonnet (round 1); Opus (re-review, which is small) | Read, Grep, Glob (no Bash) |
-| `ticket-fixer` | Gauntlet fix round in `standard`: takes the findings list, writes a RED test per behavioral finding, fixes, runs gates, commits. | Sonnet | Read, Write, Edit, Bash, Grep, Glob |
+| `ticket-planner` | Runs `superpowers:writing-plans` on the approved design; saves to the workspace; never commits; never asks the execution-method question. | Opus | Read, Write, Grep, Glob, Skill |
+| `task-implementer` | One task from its brief: loads `superpowers:test-driven-development`; red test first, then green; runs gates via `run-gate.sh`; commits locally; writes its report. | Sonnet | Read, Write, Edit, Bash, Grep, Glob, Skill |
+| `task-reviewer` | Fresh review of one task against its brief and the rulings (standard depth only). | Sonnet | Read, Grep, Glob |
+| `final-reviewer` | Review-loop critic, parameterized by concern or `re-review` mode. | Per concern (section 10) | Read, Grep, Glob |
+| `ticket-fixer` | Review-loop fix round: red test per behavioral finding, fix, gates, commit. | Sonnet | Read, Write, Edit, Bash, Grep, Glob, Skill |
 
-Implementers and per-task reviewers during task execution come from superpowers, not from this plugin.
-
-### Skills (`skills/`)
+### Skills
 | Skill | Purpose |
 |---|---|
-| `ticket-workspace` | Reference: workspace layout, state schema, phase table, ruling and finding formats. Every stage reads it. |
-| `ticket-plan` | PLAN stage. |
-| `ticket-build` | BUILD stage (sections 9–10). |
-| `ticket-ship` | SHIP stage (section 12). |
-| `ticket-close` | CLOSE stage (section 12a). |
-| `review-mine` | The gauntlet loop (section 9.4): builds review packages, dispatches critics, applies the evidence rule, drives fix rounds and blind re-reviews, decides exit. Runnable standalone on any branch. |
+| `ticket-workspace` | Reference: workspace layout, state schema, phase table, ruling/finding formats, ledger format. |
+| `ticket-plan`, `ticket-build`, `ticket-ship`, `ticket-close` | One per stage. |
+| `review-mine` | The review loop (section 9.3). Standalone or called by BUILD. |
 
-### Helper scripts (`scripts/`)
+### Scripts
 | Script | Purpose |
 |---|---|
-| `run-gate.sh <name> <timeout> -- <cmd>` | Runs a gate with a hard timeout; writes the full log to the workspace; prints status plus the last ~30 lines. |
-| `scope-check.sh` | Compares `git diff --name-only <base>..HEAD` with the allowed paths in `state.md`; non-zero on any file outside scope. Registered as a gate. |
-| `review-package.sh <base> <head> <out>` | Writes a review package: diff, changed symbols, and the grep-derived callers/importers of those symbols. Used by the gauntlet for round 1 and re-reviews. |
+| `run-gate.sh <name> <timeout> -- <cmd>` | Gate with hard timeout; full log to the workspace; prints status and the last ~30 lines; distinguishes `pass`, `fail`, `could-not-run`, `timeout`. |
+| `scope-check.sh` | Classifies changed files (`git diff --name-only <base>..HEAD`) as in-scope, incidental, out-of-scope, or forbidden (section 8). Fails only on forbidden. |
+| `review-package.sh <base> <head> <out>` | Diff, changed symbols, and grep-derived callers/importers: a starting point for critics. |
 
-## 5. Workspace (external to the repo)
+## 5. Workspace (local, outside the repo)
 
-Location: `~/.claude/tickets/<repo-slug>/<ticket-id>/`. Outside the repository, so it cannot be committed, needs no ignore rules, survives worktree removal, and is findable from any checkout. `<repo-slug>` comes from the remote URL (fallback: top-level folder name).
+`~/.claude/tickets/<repo-slug>/<ticket-id>/` for tickets; `~/.claude/tickets/<repo-slug>/_reviews/<branch>-<timestamp>/` for standalone `/review-mine`. Outside the repo, so never committed, survives worktree removal, findable from any checkout.
 
 ```
-state.md          # machine-readable header (below)
-ticket.md         # ticket verbatim; deleted at wrap on request
-design.md, plan.md
-rulings.md        # binding rulings, including those harvested from the executor ledger
-ledger.md         # phase-level ledger
-baseline.md       # gate results on the base commit
-tasks.md          # per-task commit ranges + red-to-green evidence, harvested from the executor ledger
-logs/             # full gate logs
-review/round-N/   # package/, <concern>.md, findings.md, fix-report.md, re-review.md
+state.md       # header below
+ticket.md, design.md, plan.md
+rulings.md     # binding rulings
+ledger.md      # the only ledger: one line per completed step (task, gate run, review round)
+baseline.md    # gate results on the base commit, including known reds
+briefs/task-N.md, reports/task-N.md   # brief in; red-to-green evidence and gate summary out
+logs/          # full gate logs
+review/round-N/  # package/, <concern>.md, findings.md, fix-report.md, re-review.md
 handoff.md
 ```
 
@@ -114,186 +108,192 @@ State header:
 ```
 ticket: ABC-123
 phase: reviewing
-round: 1                      # gauntlet round, 1-based
+round: 1
 branch: feat/abc-123-add-export
 base: 4f2c1ab
-profile: standard
-budget:
-  impl_dispatches_max: 40     # 4 × task count (section 10)
-  impl_dispatches_used: 17
-  gauntlet_dispatches_max: 7  # reserved up front by profile
-  gauntlet_dispatches_used: 3
-  fix_rounds_max: 2           # set by profile
+depth: standard
+budget: {impl_max: 20, impl_used: 17, review_max: 7, review_used: 3, fix_rounds_max: 2}
 checkout: worktree ../repo-abc-123
-gates: {test: "npm test", lint: "npm run lint", types: "npm run typecheck", scope: "scripts/scope-check.sh"}
-scope: {allow: ["src/export/**", "tests/export/**"]}
-executor_workspace: .superpowers/sdd/<plan>/
+gates: {test: "npm test", lint: "npm run lint", types: "npm run typecheck"}
+scope: {allow: ["src/export/**", "tests/export/**"], forbid: ["src/billing/**"]}
 ```
 
-**Hand-off overrides (user instructions outrank skills):**
-- *Brainstorming / writing-plans:* save design and plan to the workspace, do not commit, do not ask the execution-method question.
-- *Executor (executing-plans or subagent-driven-development):* run the task loop only and **stop when no tasks remain**. Do not run the executor's own final review, fix pass, workspace deletion, or `finishing-a-development-branch`. BUILD owns everything after the last task.
-- Immediately after the executor stops, BUILD **harvests** its ledger: task completion lines into `tasks.md`, `Ruling:` lines into `rulings.md`, `minor (deferred)` lines into the deferred list. Only then may the executor workspace be removed (at wrap).
+**Hand-off overrides for superpowers skills** (user instructions outrank skills): brainstorming and writing-plans save to the workspace, do not commit, and do not ask the execution-method question.
 
 ## 6. Phase machine
-
 ```
 intake → designed → planned → approved → implementing → reviewing ⇄ fixing → ready
-            any stop condition, exhausted budget, or open Critical/Important at cap → blocked
+      budget exhausted, a stop condition, or an open Critical at the cap → blocked
 ready | blocked → handoff → (round2 → implementing) → pr → closed (after merge)
 ```
-- `reviewing` covers round-1 review and every re-review; `fixing` covers fix rounds. `round` in state says which.
-- Phase changes are written with a ledger line.
-- `ready` requires both: gates green against the baseline **and** no open Critical/Important findings. Anything else at the end is `blocked`, with a reason.
-- **Round 2** (from handoff answers): the user's answers become rulings and new plan tasks; implementation resumes with a new impl allotment (4 × new tasks), and the gauntlet runs again with a fresh gauntlet reserve, scoped to the round-2 diff.
-- Resume: re-running `/ticket <id>` reads state, both ledgers, and `git log`; those outrank conversation memory.
-- Concurrency: one workspace per ticket ID; two tickets in one repo need separate checkouts.
+- **Green** means no gate result is worse than the baseline: no new failures, and every gate ran.
+- **`ready`** requires green **and** no open Critical finding. Open Important findings at the cap do not block; they become SHIP questions.
+- Round 2: answers become rulings and new plan tasks; new implementation allotment; the review loop runs again with a fresh review budget, scoped to the round-2 diff.
+- Resume: re-running `/ticket <id>` reads state, ledger, `review/round-N/`, and `git log`.
+- Concurrency: one workspace per ticket; two tickets in one repo need separate checkouts.
 
 ## 7. Interaction contract
+User consulted only at PLAN (questions, approach, design, plan, autonomy brief) and SHIP (one batched report, then PR authorization). CLOSE asks nothing.
 
-The user is consulted only at:
-1. PLAN: clarifying questions, approach, design approval, plan approval, autonomy brief approval.
-2. SHIP: one batched handoff, then PR authorization.
+BUILD stops only for: (1) an irreversible or destructive operation; (2) a security-sensitive action; (3) an out-of-repo side effect normally asked about first (push, publish, send); (4) a plan so broken every path is a guess. Everything else is decided by the orchestrator, recorded as a ruling (what, why, cost if wrong), and reported.
 
-CLOSE asks nothing: running it is the request, and it only acts on a merged PR.
+**Permissions are part of the contract.** The brief proposes an allowlist (gate commands, `git add/commit/diff/log/status`, the scripts, workspace read/write). The user approves and adds it to their own settings; the pipeline never edits settings. Pre-flight dry-runs every gate; any permission prompt blocks `approved`.
 
-During BUILD it stops only for: (1) an irreversible or destructive operation; (2) a security-sensitive action; (3) an out-of-repo side effect normally asked about first (push, publish, send); (4) a plan so broken every path is a guess. Everything else is decided by the orchestrator (the main session), recorded as a ruling (what, why, cost if wrong), and reported in the handoff.
+## 8. Rulings, findings, autonomy brief, scope
 
-**Permissions are part of the contract.** The autonomy brief proposes a project allowlist: gate commands, `git add/commit/diff/log/status`, the helper scripts, and read/write access to the workspace path. The user approves it and adds it to their own settings; the pipeline never edits settings. Pre-flight runs every gate once and has a reviewer-equivalent read of the workspace; any prompt or failure blocks `approved`.
+**Ruling** (`rulings.md`): `R3 — <title> (source: user | orchestrator)` / Decision / Why / Cost if wrong / Applies to.
 
-## 8. Rulings, findings, and the autonomy brief
-
-**Ruling format** (`rulings.md`, binding on all agents):
+**Finding** (`review/round-N/findings.md`):
 ```
-R3 — <title> (source: user | orchestrator | executor)
-Decision: ... / Why: ... / Cost if wrong: ... / Applies to: all | task N
-```
-
-**Finding format** (`review/round-N/findings.md`):
-```
-F1-2 — <title>                     # F<round>-<n>; carries forward unchanged across rounds
+F1-2 — <title>
 Severity: Critical | Important | Minor
-Kind: behavioral | structural      # structural = no observable behavior (naming, duplication...)
+Kind: behavioral | structural
 Location: path/file.ts:42
-Trigger: <input or condition>  Expected: ...  Actual: ...
-Fingerprint: <file>:<symbol>:<trigger-hash>   # identity for dedupe and stall detection
+Trigger: ...  Expected: ...  Actual: ...
+Fingerprint: <file>:<symbol>:<trigger-hash>
 ```
 
-**Autonomy brief** (PLAN must obtain, before approval):
-- **Acceptance criteria.** None in the ticket → written with the user, or the run does not start. They become the **bar**: checks the critics grade against.
-- Worktree or main checkout; branch `<type>/<ticket-id>-<slug>` (overridable).
-- Gate commands with timeouts; **baseline** run on the base commit (red baseline blocks the start).
-- **Scope**: allowed and forbidden paths, enforced by `scope-check.sh` after every task and fix round.
-- Profile and budget; the permission allowlist; PR target branch and body conventions.
+**Autonomy brief**, obtained in PLAN:
+- Acceptance criteria (written with the user if missing); they become the bar.
+- Worktree or main checkout; branch `<type>/<ticket-id>-<slug>`.
+- Gate commands with timeouts; baseline run on the base commit. Known reds are recorded; the start is blocked only if a gate **could not run** (missing command, timeout, environment error).
+- Scope: `allow` and `forbid` paths, plus the built-in **incidental** list.
+- Review depth and budget; the permission allowlist; PR target and body conventions.
+
+**Scope classes** (`scope-check.sh`):
+| Class | Examples | Effect |
+|---|---|---|
+| In scope | matches `allow` | none |
+| Incidental (built-in) | lockfiles, package manifests, `index.*` barrel exports, generated types/clients, snapshot files, migrations folder when the plan mentions a migration | none; listed in report |
+| Out of scope | anything else not forbidden | ruling recorded and shown in the report; build continues |
+| Forbidden | matches `forbid` | gate failure → fix round must undo it; still present at cap → `blocked` |
 
 ## 9. BUILD stage
 
-1. **Pre-flight:** phase `approved` (or `round2`); workspace readable; superpowers present; baseline recorded; allowlist verified by a dry run of every gate; base SHA frozen.
-2. **Tasks:** run the executor by profile (`lite` → `executing-plans`, `standard` → `subagent-driven-development`) under the hand-off override (section 5): TDD mandatory, gates via `run-gate.sh`, scope-check as a gate, stop when no tasks remain. The orchestrator tracks `impl_dispatches_used` from the executor ledger; at the cap it lets the current task's step finish, then stops the executor and goes to step 4 with phase `blocked` pending.
-3. **Harvest** the executor ledger into `tasks.md`, `rulings.md`, and the deferred list.
-4. **Gauntlet loop** (`review-mine`). Principles: the builder never grades its own work; critics are fresh and see none of the previous critics' reasoning; the bar is concrete; the loop ends when a blind re-review of the fixes finds nothing Critical/Important and gates are green, or when the budget ends.
-   1. **Round-1 package:** `review-package.sh base..HEAD` plus rulings, plan, bar, and gate logs vs baseline.
-   2. **Round-1 critics:** `final-reviewer` per concern (`lite`: 1 `combined`; `standard`: `impact`, `security+regression`, `requirements+maintainability`), Sonnet.
-   3. **Evidence rule (reviewer side):** each finding states location, trigger, expected vs actual (finding format). Findings missing these are dropped. The orchestrator dedupes by fingerprint and ranks.
-   4. **Severity re-grade:** the orchestrator may re-grade by effect on the person using the software; every re-grade is a ruling.
-   5. **Fix round** (Critical and Important only; Minors deferred). Fixer: `ticket-fixer` (one dispatch with the full list) in `standard`; the orchestrator inline in `lite`.
-      - *Behavioral findings:* the fixer writes a RED test first; **that test is the proof.** If no failing test can be produced, the finding is marked `unreproduced`, is not fixed, and goes to the handoff.
-      - *Structural findings:* fixed directly; verified by the re-review only.
-      - After fixes: all gates plus scope-check via `run-gate.sh`.
-   6. **Blind re-review** (Opus, one dispatch): receives the fix diff, `review-package.sh` callers/importers of every symbol the fix touched, gate logs vs baseline, the bar, and the list of finding IDs and titles (not the earlier reasoning). It marks each ID `ADDRESSED` or `NOT ADDRESSED` and reports new findings, which go through the evidence rule with new IDs.
-   7. **Exit / continue:**
-      - All Critical/Important `ADDRESSED`, no new ones, gates green → exit clean.
-      - Otherwise, if `round < fix_rounds_max` and gauntlet budget remains → next round (5–6) on the open IDs and new ones.
-      - **Stall:** an ID marked `NOT ADDRESSED` in two consecutive re-reviews is not retried. The orchestrator decides: Critical → `blocked`; Important → a ruling deferring it plus a §0 question in the handoff.
-      - Cap or budget reached with Critical/Important open → `blocked`.
-      - Termination is guaranteed by `fix_rounds_max`; oscillation is bounded by it.
-5. **Finish:** final gates against the baseline; phase `ready` only if section 6's two conditions hold, else `blocked`. No questions.
+### 9.1 Pre-flight
+Phase `approved` or `round2`; superpowers present; every gate run once on the base commit via `run-gate.sh` (baseline); allowlist confirmed by that run; base SHA frozen.
 
-## 10. Profiles and cost control (Phase 1)
+### 9.2 Task driver (own; replaces superpowers' executors)
+For each plan task, sequentially:
+1. Write `briefs/task-N.md`: task text, interfaces, relevant rulings, gates, scope.
+2. **Standard:** dispatch `task-implementer`. **Lite:** the orchestrator implements inline under `superpowers:test-driven-development`.
+3. The orchestrator re-runs gates and scope-check itself (never trusts a report's claim of green).
+4. **Standard:** dispatch a fresh `task-reviewer`. Critical/Important → fix round by a new `task-implementer` dispatch, then a new `task-reviewer`. Max 2 fix rounds per task; then the open items carry into the review loop as findings.
+5. Ledger line: task, commit range, gate results vs baseline, review result.
+Gate failures are triaged first (section 11). Implementation budget exhausted → stop after the current step; run the review loop on what exists (its budget is reserved separately).
+
+### 9.3 Review loop (`review-mine`)
+1. **Package:** `review-package.sh base..HEAD`, plus rulings, plan, the bar, gate logs vs baseline. Critics are told the package is a **starting point, not the boundary**: grep-derived callers miss dependency injection, dynamic dispatch, string-keyed routes, and framework conventions (route files, ORM schemas, config-driven wiring); critics use Grep/Glob to look beyond it.
+2. **Round-1 critics** by depth (section 10). Read-only; every finding is a hypothesis until reproduced.
+3. **Evidence rule:** a finding must state location, trigger, expected vs actual; otherwise dropped. Dedupe by fingerprint; rank.
+4. **Severity changes:** the orchestrator may raise any severity. It may **never downgrade a Critical**. Downgrading an Important to Minor is allowed only as a ruling, and every downgrade is listed in its own report section.
+5. **Fix round** (Critical and Important; Minors deferred), by `ticket-fixer` (standard) or inline (lite):
+   - Behavioral: red test first; **the red test is the proof.** Cannot be reproduced → `unreproduced`, not fixed, listed in its own report section (security first).
+   - Structural: fixed directly; verified by re-review.
+   - Then all gates and scope-check.
+6. **Fresh re-review:** a new `final-reviewer` dispatch in `re-review` mode gets the fix diff, the callers package for touched symbols, gate logs vs baseline, the bar, and the finding IDs and titles (titles carry the earlier framing; the critic is fresh, not blind). It marks each ID `ADDRESSED` / `NOT ADDRESSED` and may report new findings, which go through the evidence rule.
+7. **Evidence outranks opinion:** for a behavioral finding whose red test now passes, `NOT ADDRESSED` counts only if the critic supplies a **new trigger**; that becomes a new finding. Without a new trigger, the finding stays addressed.
+8. **Exit:** all Critical/Important addressed, no new ones, green → clean. Otherwise, if `round < fix_rounds_max` and review budget remains → next round on open and new findings. At the cap: open **Critical** → `blocked`; open **Important** → ruling deferring it plus a SHIP question. Termination is guaranteed by the cap.
+
+### 9.4 Finish
+Final gates vs baseline; `ready` if section 6's conditions hold, else `blocked`. No questions.
+
+## 10. Review depth and cost
+
+Chosen automatically from plan and diff size, shown in the PLAN summary; the user only speaks up to make it heavier. Security-sensitive scope forces standard.
 
 | | `lite` | `standard` (default) |
 |---|---|---|
-| Executor | `executing-plans` (inline) | `subagent-driven-development` |
-| Impl budget | 2 × tasks | 4 × tasks |
-| Gauntlet round 1 | 1 `combined` critic | 3 critics |
-| Fixer | orchestrator inline | `ticket-fixer` |
+| Task execution | orchestrator inline, TDD | `task-implementer` per task + fresh `task-reviewer` |
+| Implementation budget | 2 × tasks | 4 × tasks |
+| Round-1 critics | 1 `combined` on **Opus** | `impact` (**Opus**), `security+regression` (**Opus**), `requirements+maintainability` (Sonnet) |
+| Fixer | inline | `ticket-fixer` (Sonnet) |
+| Re-review | Sonnet | Sonnet |
 | `fix_rounds_max` | 1 | 2 |
-| Gauntlet reserve (dispatches) | 2 (1 critic + 1 re-review) | 7 (3 critics + 2 × (fixer + re-review)) |
+| Review budget (reserved up front) | 2 | 7 |
 
-- Selected automatically from plan and diff size and shown in the PLAN summary as "review depth"; the user only speaks up to make it heavier. Security-sensitive scope forces `standard`.
-- **Model ruling:** round-1 critics run on Sonnet for cost; the re-review runs on Opus because it is small and decides exit. Planner on Opus. No Haiku in Phase 1 (cheap models often cost more turns).
-- **Budget:** hard caps on dispatches, tracked in state; a malformed-output re-dispatch counts against the same cap. The gauntlet reserve is set aside before implementation starts, so implementation can never consume the review budget. It does not claim to measure tokens.
-- **Context hygiene:** gate output goes to log files; critics receive packages, not the repo; subagents return short structured summaries.
+- **Model ruling:** discovery is where missed bugs cost most, so the discovery critics for impact and security use Opus; checking a known fix is the easier job, so re-review uses Sonnet. Planner on Opus. No Haiku in Phase 1.
+- Budgets are dispatch caps tracked in state; a re-dispatch for malformed output counts. Not a token meter.
+- Context hygiene: gate output to files; critics get packages; subagents return short summaries.
 
 ## 11. Failure triage
-
 | Class | Action |
 |---|---|
-| Product bug | Fix round (executor during tasks, gauntlet fixer after) |
+| Product bug | Fix round |
 | Test defect | Fix the test, not the product; ruling if semantics changed |
 | Setup/environment | Fix environment or record as blocker; never touch product code |
-| Pre-existing (red in `baseline.md`) | Do not fix; list in handoff |
-| Hung/timeout | Recorded; one retry with a longer timeout only if a ruling allows |
-| Unknown | One `superpowers:systematic-debugging` pass; if unresolved, stop condition 4 |
+| Known red (in `baseline.md`) | Not fixed; listed in report; does not count against green |
+| Could not run / timeout | One retry with a longer timeout if a ruling allows; otherwise `blocked` |
+| Unknown | One `superpowers:systematic-debugging` pass; unresolved → stop condition 4 |
 
-## 12. SHIP stage and the handoff
+## 12. SHIP stage and the report
 
-`handoff.md`, in order: what changed (files, commits, diff stat); gate evidence vs baseline; red-to-green proof per task (`tasks.md`); gauntlet summary per round (findings raised, dropped for missing evidence, fixed, `unreproduced`, stalled, deferred); rulings made autonomously with cost if wrong; **§0 questions**, each with a recommendation and terse answer format ("1 keep 2 change 3 yes"); base drift; draft PR title and body.
+`handoff.md`, in order:
+1. **Needs your decision:** numbered questions with recommendations; answer tersely ("1 keep 2 change 3 yes").
+2. **Unreproduced findings** (security first): not dismissed; each needs a decision.
+3. **Severity downgrades** made by the orchestrator.
+4. What changed: files, commits, diff stat, scope classes (incidental and out-of-scope files listed).
+5. Evidence: gates vs baseline (known reds called out), red-to-green proof per task.
+6. Review loop summary per round: raised, dropped for missing evidence, fixed, deferred.
+7. All other rulings with cost if wrong.
+8. Base drift; draft PR title and body.
 
-After answers: required changes become rulings and round 2 runs (section 6). On explicit authorization, in order: scan PR body and diff for secrets and company-specific strings and show the body; fetch base and, with approval, rebase; push; `gh pr create --draft`; No tool attribution anywhere. Cleanup is deferred to CLOSE.
+After answers: required changes → rulings → round 2. On explicit authorization: scan PR body and diff for secrets and company-specific strings and show the body; fetch base and, with approval, rebase; push; `gh pr create --draft`. No tool attribution. Cleanup waits for CLOSE.
 
 ## 12a. CLOSE stage
+1. `gh pr view`: not merged → report state, change nothing.
+2. Merged → set the ticket to Done with the machine's tracker tool; if none, give the one manual step.
+3. Remove the worktree and the merged local branch.
+4. Mark the workspace `closed`; it stays local (Phase 2: knowledge notes updated here).
 
-Run by `/ticket <id>` once phase is `pr`.
-1. Check the PR state (`gh pr view`). Not merged → report its state (open, changes requested, closed unmerged) and change nothing.
-2. Merged → update the ticket status to Done with whatever tracker tool the machine provides; if none, say so and give the one-line manual step.
-3. Clean up: remove the worktree, delete the local branch if it is merged, remove the executor workspace.
-4. Mark the workspace `closed`. It stays local in `~/.claude/tickets/` (Phase 2: notes are copied into the local knowledge vault here).
-
-## 13. Ticket intake and tracker independence
-
-PLAN takes an ID, URL, or pasted text; reads it with whatever tool the machine offers (tracker MCP, `gh issue view`, a CLI) or asks the user to paste. Saved verbatim in `ticket.md`; nothing downstream calls the tracker. Tracker connections and company conventions live in the work project's own `.claude/`, never in this repo.
+## 13. Ticket intake
+ID, URL, or pasted text, read with whatever tool the machine offers, or pasted. Saved verbatim; nothing downstream calls the tracker. Tracker connections and company conventions live in the work project's `.claude/`, never in this repo.
 
 ## 14. Failure modes and recovery
-
 | Event | Behavior |
 |---|---|
-| Crash, `/clear`, new session | Re-run `/ticket <id>`; resumes from state, ledgers, `review/round-N/`, `git log`. |
+| Crash, `/clear`, new session | Re-run `/ticket <id>`; resumes from files and `git log`. |
 | `superpowers` missing | Stop at step 0 with install instructions. |
-| Red baseline | Stop before any change; report failing gates on the base commit. |
+| A gate cannot run on the base commit | Block the start; report which gate and why. |
+| Known reds on the base commit | Recorded; build proceeds; reported. |
 | Permission prompt in pre-flight | Block `approved`; show missing allowlist entries. |
-| Scope-check hit | Ruling or stop condition; never accepted silently. |
-| Impl budget reached | Stop executor after the current step; run the gauntlet on what exists (reserve is intact); end `blocked` unless section 6's `ready` conditions hold. |
-| Gauntlet budget reached | End per 9.4.7. |
-| Subagent output malformed or evidence-free | One re-dispatch (counts against budget), then stop condition 4. |
-| Executor ignores the stop-after-tasks override | Detected by its ledger showing final-review/finish steps; spike-blocking issue (section 17). |
+| Forbidden path touched | Gate failure → fix round; at cap → `blocked`. |
+| Out-of-scope path touched | Ruling; reported. |
+| Implementation budget reached | Stop after current step; review loop runs on what exists. |
+| Review budget reached | Exit per 9.3.8. |
+| Malformed or evidence-free subagent output | One re-dispatch (counts), then stop condition 4. |
 | Tracker unreachable | Ask the user to paste. |
-| Base branch moved | Reported in handoff; rebase only with approval, never mid-run. |
+| Base branch moved | Reported; rebase only with approval. |
 
 ## 15. Verification of the pipeline itself
-- Extend `scripts/validate.sh`: every referenced command/agent/skill/script exists; agents have `tools:` and `model:`; `final-reviewer` has no Bash; no file contains attribution strings.
-- `tests/fixture/`: a tiny repo with a canned ticket and seeded defects (one behavioral, one structural, one pre-existing red), plus `tests/SMOKE.md`, a manual end-to-end checklist run before each release. Expected: behavioral defect fixed with a RED test, structural one fixed and `ADDRESSED`, pre-existing one reported and untouched.
-- Evaluate `claude plugin eval` suites for `final-reviewer` once the CLI's behavior is confirmed.
+- Extend `scripts/validate.sh`: referenced commands/agents/skills/scripts exist; agents declare `tools:` and `model:`; read-only agents have no Write/Edit/Bash; no attribution strings.
+- `tests/fixture/`: a small repo with seeded cases and `tests/SMOKE.md`. Expected outcomes: a behavioral bug fixed with a red test; a structural issue fixed and `ADDRESSED`; a known baseline red reported and untouched while the run proceeds; a security-shaped finding with no reproducible test reported as `unreproduced`; a lockfile change classed incidental; a forbidden-path edit forced back out.
+- Track per run: dispatches used, findings raised/kept/fixed, to judge whether the review loop earns its cost.
 
-## 16. Phasing
-- **Phase 1 (this spec):** workspace + phase machine, `/ticket` router with PLAN/BUILD/SHIP/CLOSE stage skills, `/review-mine`, `ticket-planner`, `final-reviewer`, `ticket-fixer`, `review-mine` gauntlet, three helper scripts, `lite`/`standard`, handoff, fixture smoke test.
-- **Phase 2:** guardrail hooks (block push/PR before handoff approval, no-attribution guard, block commits on the base branch); `full` profile with 5 concerns and a `finding-challenger`; parallel independent tasks; local knowledge notes (Obsidian), written at PLAN (design/plan) and updated at CLOSE (Done); a pluggable `prove` command for projects with an integration environment.
+## 16. Phasing (build order)
+- **Phase 1a — `/review-mine` standalone.** `final-reviewer`, `ticket-fixer`, `review-mine` skill, `run-gate.sh`, `scope-check.sh` (optional in standalone), `review-package.sh`, standalone workspace, lite/standard depth flag, report. Useful on any branch immediately; exercises the hardest logic; measures cost vs value before anything else is built.
+- **Phase 1b — `/ticket` PLAN + BUILD + SHIP.** Workspace and phase machine, `ticket-planner`, task driver with `task-implementer`/`task-reviewer`, autonomy brief, BUILD calling `review-mine`, report and draft PR.
+- **Phase 1c — CLOSE and round 2.**
+- **Phase 2:** guardrail hooks (block push/PR before report approval, no-attribution guard, block commits on the base branch); `full` depth with 5 concerns and a challenger; parallel tasks; local Obsidian notes (written at PLAN, marked Done at CLOSE); a pluggable integration-test step.
 
-## 17. Assumptions to verify first (Spike 0)
-1. A plugin agent with `Skill` in its tools can invoke `superpowers:writing-plans` and write to `~/.claude/tickets/...` (medium confidence).
-2. Agent frontmatter `model:` pins the model (high).
-3. Subagents cannot dispatch subagents, so the main session orchestrates (high).
-4. Brainstorming/writing-plans honor the save-path, no-commit, and no-execution-question overrides (unverified).
-5. **Both executors honor "stop when no tasks remain"**: no final review, no fix pass, no workspace deletion, no `finishing-a-development-branch` menu (unverified; spike-blocking).
-6. Read-only agents can read `~/.claude/tickets/...` without a permission prompt once allowlisted (medium).
-7. Plugin agents ignore `hooks`, `permissionMode`, and `mcpServers` frontmatter, so nothing relies on them (medium-high).
-8. After `/clear`, re-running a command resumes correctly from files.
+## 17. Assumptions to verify (spike before each phase)
+Before 1a:
+1. Agent frontmatter `model:` pins the model per agent (high).
+2. Read-only agents can read `~/.claude/tickets/...` without prompting once allowlisted (medium).
+3. Plugin agents ignore `hooks`, `permissionMode`, `mcpServers` frontmatter; nothing depends on them (medium-high).
+Before 1b:
+4. A plugin agent with `Skill` can invoke `superpowers:writing-plans` / `test-driven-development` (medium).
+5. Subagents cannot dispatch subagents, so the main session orchestrates (high).
+6. Brainstorming/writing-plans honor the save-path, no-commit, no-execution-question overrides.
+7. Re-running `/ticket` after `/clear` resumes correctly.
 
-Fallbacks: if 1 fails, the planner runs in the main thread. If 4 fails, PLAN performs design/plan writing inline with explicit instructions. If 5 fails, BUILD drives tasks itself using the executor's per-task procedure, without invoking the skill's end-of-plan sections. If 6 fails, the package is copied into the repo's git-ignored `.superpowers/` area for the review.
+Fallbacks: 2 fails → packages copied into the repo's git-ignored `.superpowers/` area. 4 fails → planner runs in the main session; implementer follows TDD from its brief text. 6 fails → PLAN writes design and plan inline.
 
 ## 18. Decisions recorded
-1. Command surface: one `/ticket` command with PLAN/BUILD/SHIP/CLOSE stages, plus `/review-mine` (decided by Claude; user asked for a new design, not the old command set).
-2. CLOSE = the old wrap step: Done status only when the PR is merged, plus cleanup. Knowledge-vault updates are Phase 2.
-3. Review depth (profile) is chosen automatically; default `standard`.
+1. One `/ticket` command with PLAN/BUILD/SHIP/CLOSE stages, plus `/review-mine`.
+2. CLOSE marks Done only when merged, then cleans up.
+3. Review depth chosen automatically; default standard.
 4. Branch naming `<type>/<ticket-id>-<slug>` (user confirmed).
-5. Workspace in `~/.claude/tickets/`, local only, never inside the project.
+5. Workspace in `~/.claude/tickets/`, local only.
+6. Own task driver; superpowers for skills, not control flow (v5).
+7. `/review-mine` built first (v5).
