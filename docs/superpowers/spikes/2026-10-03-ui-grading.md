@@ -23,7 +23,14 @@ npx --yes playwright screenshot --channel chrome --viewport-size=390,844 --full-
 Result: exit 0, PNG written (5302 bytes).
 
 Conclusion: the plain command fails on this Mac because of a browser-revision mismatch. `--channel chrome` works.
-Consequence: Task 2 defaults to `npx --yes playwright screenshot --channel chrome ...`. It needs Google Chrome installed, and it keeps `--full-page` and `--color-scheme`. If that fails, fall back to the Chrome headless command below. Do not rely on the cached ms-playwright browsers, and do not run `npx playwright install` implicitly.
+Consequence: Task 2's DEFAULT command is:
+```
+npx --yes playwright screenshot --channel chrome --viewport-size=<W>,<H> --full-page --color-scheme=<light|dark> <url> <out.png>
+```
+It needs Google Chrome installed. FALLBACK if that fails (viewport only, no full-page or color-scheme):
+```
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars --window-size=<W>,<H> --screenshot=<out.png> <url>
+``` Do not rely on the cached ms-playwright browsers, and do not run `npx playwright install` implicitly.
 
 ## 2. Chrome headless screenshot
 
@@ -42,6 +49,7 @@ Command (from repo root):
 ```
 claude -p --model sonnet --plugin-dir "$PWD" --allowedTools "Read(//$S/**)" "Read(//private$S/**)" "Glob" -- "Dispatch patrick-workflows:final-reviewer with this text instead of a review: 'Read the image $S/pw.png and report its dominant background color in one word.' Print its answer." < /dev/null
 ```
+File read: `$S/pw.png`. The plain Playwright run in section 1 never wrote it. It is a byte-for-byte copy (`cp $S/pw2.png $S/pw.png`) of the `--channel chrome` output pw2.png, made so the brief's probe command could be used unchanged.
 (`$S` is under `/var/folders/...`; both the `//var` and `//private/var` allow rules were supplied.)
 
 Output (trimmed): `The final-reviewer's answer: **Blue.**` (about 14s). Unrelated MCP auth warnings were also printed.
