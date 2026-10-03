@@ -43,7 +43,7 @@ only reaches other machines after `version` is bumped in
 - **BUILD (on its own):** one fresh implementer and reviewer per task, test first, gates re-run by the orchestrator, then the `/review-mine` loop. Asks nothing.
 - **SHIP (with you):** one report with numbered questions. Ask for changes and it runs a second round; say yes and it scans for secrets, then opens a draft PR.
 
-Run `/ticket <id>` again at any time to resume where it stopped. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. Marking the ticket done after merge (CLOSE) and UI grading come in later versions.
+Run `/ticket <id>` again at any time to resume where it stopped. If another plugin also defines `/ticket` or `/review-mine`, use the namespaced form: `/patrick-workflows:ticket`, `/patrick-workflows:review-mine`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. Marking the ticket done after merge (CLOSE) and UI grading come in later versions.
 
 Optional: list company names and internal hostnames, one per line, in your work project's `.claude/patrick-workflows-deny.txt`. SHIP refuses to open a PR whose body or diff contains them.
 
