@@ -14,6 +14,7 @@ Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../tick
 2. `merged`:
    1. Mark the ticket done with what the machine offers: a GitHub issue → `gh issue close <n> --comment "Done in <pr_url>"`; another tracker → its MCP tool if available; otherwise print the one manual step. Report which happened.
    2. If the session is in the ticket's worktree, `ExitWorktree` with `action: "keep"` first.
-   3. If the tree is clean: `git switch <base_branch>` and, when a remote exists, `git pull --ff-only`. Delete the local branch with `git branch -d <branch>` (never `-D`; if git refuses, report it and leave the branch).
-   4. If `checkout` is a worktree path: `git worktree remove <path>` (never with `--force`; report a refusal).
-   5. Ledger line with `date -u`; `S phase closed`. Tell the user the ticket is closed.
+   3. If `checkout` is a worktree path: `git worktree remove <path>` (never with `--force`; report a refusal).
+   4. In the main checkout, if its tree is clean (this is where `git switch` runs): `git switch <base_branch>` and, when a remote exists, `git pull --ff-only`.
+   5. Delete the local branch with `git branch -d <branch>` (never `-D`). If git refuses, report it and tell the user they may delete it themselves with `git branch -D <branch>` after checking it was merged (e.g. squash merges).
+   6. Ledger line with `date -u +%Y-%m-%dT%H:%M:%SZ`; `S phase closed`. Tell the user the ticket is closed.

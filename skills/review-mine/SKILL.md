@@ -24,6 +24,17 @@ A builder/critic review loop on gauntlet principles: the builder never grades it
 - `--no-fix`: run round 1 only and report.
 - `--prove/--reset/--env-file/--db-pattern/--allow-remote`: passed straight to `exit-pair.sh`.
 - `--graded <graded.md>`: adds the graded (UI) bar (section 4b). Adds 5 to the review budget (3 for lite).
+
+```
+graded.md (one "key: value" per line):
+dev: <dev command; the server gets PORT in its environment>
+routes: <path to a routes file, one path per line>
+reference: image-dir:<path> | route:<path on the same site> | url:<http(s) url>
+rubric: <path to rubric.md; criterion names contain no ":">
+margin: 0.3
+floor: 3.5
+min: 3
+```
 - Embedded mode (used by `/ticket`): `--workspace <dir>` uses that directory (`bash "$SKILL_DIR/scripts/workspace.sh" --at <dir>`) instead of creating one; `--baseline <file>` copies that file to `<WS>/baseline.md` and skips setup step 7; `--budget <n>` and `--rounds-max <n>` override the depth defaults; `--gates <file>` (lines `<name>: <command>`) and `--gate-timeout <seconds>` replace gate detection, so setup step 6 is skipped and the review loop runs exactly the gates the caller agreed, under the same names as its baseline. In embedded mode the caller has already checked the tree and branch, so setup steps 0–2 are skipped. If `<WS>/state.md` already exists with `status: running`, this is a rerun after a crash: keep its `budget_used`, `round` and findings and continue from them.
 
 ## 2. Setup (the only point where you may stop with a message to the user)
