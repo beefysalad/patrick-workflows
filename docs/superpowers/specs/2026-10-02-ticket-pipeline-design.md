@@ -129,11 +129,11 @@ bars:
 ## 6. Phase machine
 ```
 intake → designed → planned → approved → implementing → reviewing ⇄ fixing → ready
-      budget exhausted, a stop condition, or an open Critical at the cap → blocked
+      budget exhausted, a stop condition, an open Critical, or an unmet bar at the cap/plateau → blocked
 ready | blocked → handoff → (round2 → implementing) → pr → closed (after merge)
 ```
 - **Green** means no gate result is worse than the baseline: no new failures, and every gate ran.
-- **`ready`** requires green **and** no open Critical finding. Open Important findings at the cap do not block; they become SHIP questions.
+- **`ready`** requires green, no open Critical finding, **and every declared bar met** (section 9.5). Open Important findings at the cap do not block; they become SHIP questions.
 - Round 2: answers become rulings and new plan tasks; new implementation allotment; the review loop runs again with a fresh review budget, scoped to the round-2 diff.
 - Resume: re-running `/ticket <id>` reads state, ledger, `review/round-N/`, and `git log`.
 - Concurrency: one workspace per ticket; two tickets in one repo need separate checkouts.
