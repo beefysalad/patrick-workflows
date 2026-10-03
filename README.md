@@ -32,6 +32,23 @@ only reaches other machines after `version` is bumped in
 | `hooks/hooks.json` | Hooks |
 | `templates/` | CLAUDE.md and settings.json to copy manually (plugins can't ship these) |
 
+## /ticket
+
+```
+/ticket ABC-123        start or continue a ticket (ID, URL, or pasted text)
+/ticket                list tickets in this repo
+```
+
+- **PLAN (with you):** reads the ticket, settles acceptance criteria, creates the branch (or a worktree, if you ask for one), brainstorms the design, writes the plan, and agrees an autonomy brief: gates, scope, review depth, budget, an optional exit pair, and the permission rules to add.
+- **BUILD (on its own):** one fresh implementer and reviewer per task, test first, gates re-run by the orchestrator, then the `/review-mine` loop. Asks nothing.
+- **SHIP (with you):** one report with numbered questions. Ask for changes and it runs a second round; say yes and it scans for secrets, then opens a draft PR.
+
+Run `/ticket <id>` again at any time to resume where it stopped. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. Marking the ticket done after merge (CLOSE) and UI grading come in later versions.
+
+Optional: list company names and internal hostnames, one per line, in your work project's `.claude/patrick-workflows-deny.txt`. SHIP refuses to open a PR whose body or diff contains them.
+
+Permission rules: absolute paths outside your home directory need a leading `//` (for example `Edit(//opt/data/**)`); paths under your home use `~/`.
+
 ## /review-mine
 
 Reviews the current branch with fresh critics, keeps only findings that come with evidence, fixes Critical and Important ones with a failing test first, re-reviews the fixes with a new critic, and stops at an explicit PASS, a plateau, or the budget. It commits fixes to your branch and never pushes.
