@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Prove a feature twice in a row, resetting state before each run.
 # Usage: exit-pair.sh --prove "<cmd>" [--reset "<cmd>" --env-file <path> --db-pattern <ERE>
-#                     [--db-var NAME] [--allow-remote]] [--timeout SECONDS]
+#                     [--db-var NAME] [--allow-remote]] [--timeout SECONDS] [--label NAME] [--check]
+# --check runs only the reset-safety checks and exits (0 safe, 4 refused).
 # Needs a workspace (REVIEW_WS, else the pointer from workspace.sh). Prints one "EXIT-PAIR: <result> (...)" line.
 # Exit: 0 pass, 1 fail, 3 could-not-run, 4 refused (reset target not proven disposable), 5 flaky.
 set -u
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-prove=""; reset=""; envfile=""; pattern=""; dbvar=DATABASE_URL; remote=no; limit=900
+prove=""; reset=""; envfile=""; pattern=""; dbvar=DATABASE_URL; remote=no; limit=900; label=exit-pair; check=no
 while [ $# -gt 0 ]; do
   case $1 in
     --prove) prove=${2:-}; shift 2 ;;
@@ -16,6 +17,8 @@ while [ $# -gt 0 ]; do
     --db-var) dbvar=${2:-}; shift 2 ;;
     --allow-remote) remote=yes; shift ;;
     --timeout) limit=${2:-}; shift 2 ;;
+    --label) label=${2:-}; shift 2 ;;
+    --check) check=yes; shift ;;
     *) echo "EXIT-PAIR: could-not-run (unknown option $1)"; exit 3 ;;
   esac
 done
@@ -66,6 +69,8 @@ if [ -n "$reset" ]; then
   fi
 fi
 
+if [ "$check" = yes ]; then echo "EXIT-PAIR: safe"; exit 0; fi
+
 with_env() {   # wrap a command so it loads the env file first, when one was given
   if [ -n "$envfile" ]; then
     printf 'set -a; . %s; set +a; %s' "$(printf '%q' "$envfile")" "$1"
@@ -75,14 +80,14 @@ with_env() {   # wrap a command so it loads the env file first, when one was giv
 }
 run_once() {   # $1 run number; prints pass, fail or could-not-run
   if [ -n "$reset" ]; then
-    bash "$here/run-gate.sh" "exit-pair-$1-reset" "$limit" -- "$(with_env "$reset")" >/dev/null
+    bash "$here/run-gate.sh" "$label-$1-reset" "$limit" -- "$(with_env "$reset")" >/dev/null
     [ $? -eq 0 ] || { echo could-not-run; return; }
   fi
-  bash "$here/run-gate.sh" "exit-pair-$1-prove" "$limit" -- "$(with_env "$prove")" >/dev/null
+  bash "$here/run-gate.sh" "$label-$1-prove" "$limit" -- "$(with_env "$prove")" >/dev/null
   case $? in 0) echo pass ;; 3) echo could-not-run ;; *) echo fail ;; esac
 }
 report() {   # stdout for the caller, and a durable record in the workspace
-  line="EXIT-PAIR: $1 (runs: $2; logs: $REVIEW_WS/logs/exit-pair-*)"
+  line="EXIT-PAIR: $1 (runs: $2; logs: $REVIEW_WS/logs/$label-*)"
   echo "$line"
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$line" >> "$REVIEW_WS/exit-pair.txt"
 }

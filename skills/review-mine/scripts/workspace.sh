@@ -5,6 +5,14 @@
 # Also records the path in .git/patrick-workflows-review-ws so the other scripts find it
 # without a REVIEW_WS=... prefix, which permission allow rules would not match.
 set -u
+if [ "${1:-}" = "--at" ]; then   # use a given directory (embedded mode)
+  dir=${2:?usage: workspace.sh --at <dir>}
+  git rev-parse --git-dir >/dev/null 2>&1 || { echo "not a git repository" >&2; exit 1; }
+  mkdir -p "$dir/logs" || exit 1
+  printf '%s\n' "$dir" > "$(git rev-parse --git-path patrick-workflows-review-ws)"
+  printf '%s\n' "$dir"
+  exit 0
+fi
 root=${TICKETS_HOME:-$HOME/.patrick-workflows/tickets}
 top=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "not a git repository" >&2; exit 1; }
 url=$(git config --get remote.origin.url 2>/dev/null || true)

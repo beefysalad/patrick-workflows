@@ -47,4 +47,8 @@ assert_eq "" "$(cat "$tmp/empty/files.txt")" "empty diff lists no files"
 bash "$RP" not-a-rev HEAD "$tmp/x" 2>/dev/null; code=$?
 assert_eq 1 "$code" "unknown revision exits 1"
 
+cd "$tmp" || exit 1
+printf 'x\n' > "src/café.js" && git add -A && git -c user.name=t -c user.email=t@t commit -q -m unicode
+GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 bash "$RP" HEAD~1 HEAD "$tmp/uni"   # ignore this machine's git config
+assert_contains "$(cat "$tmp/uni/files.txt")" "src/café.js" "non-ASCII file names are not C-quoted"
 finish

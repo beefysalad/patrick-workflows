@@ -16,12 +16,13 @@ A builder/critic review loop on gauntlet principles: the builder never grades it
 - Append one line to `ledger.md` for every completed step: `<UTC time> <step> <result>`.
 
 ## 1. Parse arguments
-- `base`: first positional argument; default `git merge-base HEAD origin/<default>` where `<default>` comes from `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback `main`, then `master`).
+- `base`: first positional argument; default `git merge-base HEAD origin/<default>` where `<default>` comes from `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback: the local `main` branch, then local `master`, when there is no `origin`).
 - `--depth`: `lite` or `standard`. Default: `lite` if the diff has at most 3 files and 150 changed lines and no path contains auth, security, crypto, payment, billing, session, token, password or permission; otherwise `standard`.
 - `--criteria <file>`: acceptance criteria. Without it, build the bar from the PR description (`gh pr view --json title,body` if it works) and the branch's commit messages, and mark it `inferred` in `bar.md`.
 - `--scope <file>`: scope file for `scope-check.sh`. Optional.
 - `--no-fix`: run round 1 only and report.
 - `--prove/--reset/--env-file/--db-pattern/--allow-remote`: passed straight to `exit-pair.sh`.
+- Embedded mode (used by `/ticket`): `--workspace <dir>` uses that directory (`bash "$SKILL_DIR/scripts/workspace.sh" --at <dir>`) instead of creating one; `--baseline <file>` copies that file to `<WS>/baseline.md` and skips setup step 7; `--budget <n>` and `--rounds-max <n>` override the depth defaults. In embedded mode the caller has already checked the tree and branch, so setup steps 0–2 are skipped.
 
 ## 2. Setup (the only point where you may stop with a message to the user)
 0. **Recover from an interrupted run first.** If `$(git rev-parse --git-path patrick-workflows-review-ws)` exists, read the workspace path in it. If that workspace's `state.md` says `status: running` and HEAD is detached, run `git checkout -- . && git clean -fd` (this only discards what a baseline gate wrote on the detached base commit) and then `git switch <restore_branch>`. Note the recovery in the new run's report.
@@ -63,6 +64,7 @@ status: running
 8. If VERDICT is PASS and no Critical or Important finding is open → go to section 5. If `--no-fix` → go to section 6.
 
 ## 4. Fix rounds (round N = 2, 3, ...)
+0. At the start of each fix round, increment `round` in `state.md` (round 1 is the first review).
 1. Stop if `round >= rounds_max`, or if only the protected slot remains in the budget and you still need a fixer (standard).
 2. Record the pre-fix commit (`git rev-parse HEAD`) in `state.md` as `pre_fix`.
 3. Open Critical and Important findings go to the fix round; Minors are deferred.
@@ -77,7 +79,7 @@ status: running
 10. Exit the loop when VERDICT is PASS and no Critical or Important is open; otherwise next round.
 
 ## 5. Exit pair (only if `--prove` was given)
-Run after the loop exits with PASS: `bash "$SKILL_DIR/scripts/exit-pair.sh" --prove ... [reset options]`.
+Run after the loop exits with PASS: `bash "$SKILL_DIR/scripts/exit-pair.sh" --label exit-pair-r<round> --prove ... [reset options]`.
 The result line is also appended to `<WS>/exit-pair.txt`; cite it in the report.
 - `pass` / `pass, flake seen` → bar met (note the flake).
 - `fail` → a Critical finding citing the exit-pair logs; if rounds and budget remain, go back to section 4.

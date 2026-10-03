@@ -10,7 +10,7 @@ for r in "$base" "$head"; do
 done
 mkdir -p "$out" || exit 1
 git diff "$base" "$head" > "$out/diff.patch"
-git diff --name-only "$base" "$head" > "$out/files.txt"
+git -c core.quotePath=false diff --name-only "$base" "$head" > "$out/files.txt"
 
 KW='(function|class|def|interface|type|enum|struct|trait|fn|func)'
 {

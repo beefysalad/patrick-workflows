@@ -61,4 +61,13 @@ git init -q "$tmp/r2"; printf '%s\n' "$tmp/ws2" > "$tmp/r2/.git/patrick-workflow
 out=$(cd "$tmp/r2" && printf '0\n0\n' > "$tmp/seq" && REVIEW_WS= bash "$EP" --prove "bash '$tmp/next.sh' '$tmp/seq'"); assert_eq 0 $? "exit pair finds workspace via pointer"
 assert_file "$tmp/ws2/logs/exit-pair-1-prove.log" "exit pair logs go to pointer workspace"
 
+printf '0\n0\n' > "$tmp/seq"
+out=$(bash "$EP" --label round3 --prove "bash '$tmp/next.sh' '$tmp/seq'"); assert_eq 0 $? "labelled run passes"
+assert_file "$REVIEW_WS/logs/round3-1-prove.log" "label used in log names"
+printf 'DATABASE_URL=postgres://prod.example.com/app_test\n' > "$tmp/.env.check"
+out=$(bash "$EP" --check --prove "true" --reset "echo x >> '$tmp/check.marker'" --env-file "$tmp/.env.check" --db-pattern '_test$'); assert_eq 4 $? "--check refuses remote"
+printf 'DATABASE_URL=file:./t_test.db\n' > "$tmp/.env.check"
+out=$(bash "$EP" --check --prove "true" --reset "echo x >> '$tmp/check.marker'" --env-file "$tmp/.env.check" --db-pattern '_test\.db$'); assert_eq 0 $? "--check accepts safe target"
+assert_contains "$out" "EXIT-PAIR: safe" "--check reports safe"
+[ -f "$tmp/check.marker" ] && _ko "--check ran reset" || _ok
 finish

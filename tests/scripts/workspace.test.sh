@@ -29,6 +29,11 @@ case "$out" in *"/_reviews/detached-"*) _ok ;; *) _ko "detached head: $out" ;; e
 a=$(bash "$WS"); b=$(bash "$WS")
 [ "$a" != "$b" ] && _ok || _ko "two calls in the same second get distinct dirs"
 
+at="$tmp/given ws"
+out=$(bash "$WS" --at "$at"); assert_eq "$at" "$out" "--at prints the given dir"
+[ -d "$at/logs" ] && _ok || _ko "--at creates logs"
+assert_eq "$at" "$(cat "$(git rev-parse --git-path patrick-workflows-review-ws)")" "--at updates the pointer"
+
 cd "$tmp" || exit 1
 bash "$WS" >/dev/null 2>&1; code=$?
 assert_eq 1 "$code" "outside a repo exits 1"
