@@ -50,7 +50,7 @@ for f in agents/*.md; do
 done
 
 # Read-only agents must not be able to change anything.
-for f in agents/final-reviewer.md; do
+for f in agents/final-reviewer.md agents/task-reviewer.md; do
   [ -f "$f" ] || continue
   fm "$f" | grep '^tools:' | grep -Eq '(Write|Edit|Bash|NotebookEdit)' && bad "read-only agent has write tools: $f"
 done
@@ -63,7 +63,7 @@ for f in skills/*/SKILL.md; do
     [ -n "$s" ] || continue
     [ -f "$d/$s" ] || bad "missing script $s referenced by $f"
   done <<EOF
-$(grep -oE 'scripts/[A-Za-z0-9_-]+\.sh' "$f" | sort -u)
+$(grep -oE '(\.\./[A-Za-z0-9_-]+/)?scripts/[A-Za-z0-9_-]+\.sh' "$f" | sort -u)
 EOF
 done
 
