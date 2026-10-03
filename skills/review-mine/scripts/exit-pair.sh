@@ -40,9 +40,23 @@ if [ -n "$reset" ]; then
   url=$(env_value "$envfile" "$dbvar")
   [ -n "$url" ] || refuse "$dbvar is not set in $envfile"
   printf '%s' "$url" | grep -Eq -- "$pattern" || refuse "$dbvar does not match the disposable pattern"
+  # Work out where the database lives. Anything not recognised is refused.
   case $url in
-    *://*) host=$(printf '%s' "$url" | sed -E 's#^[A-Za-z0-9+.-]+://([^@/]*@)?(\[[^]]*\]|[^:/?]*).*#\2#') ;;
-    *) host=localhost ;;   # file paths and sqlite-style URLs have no network host
+    file:*|sqlite:*|/*|./*|../*)
+      host=localhost ;;                    # file databases have no network host
+    *://*)
+      rest=${url#*://}; auth=${rest%%/*}; auth=${auth%%\?*}
+      host=${auth##*@}                     # after the last @, so a password with @ never leaks
+      case $host in
+        \[*) host=${host%%]*}]; ;;          # [::1]:5432 -> [::1]
+        *) host=${host%%:*} ;;
+      esac ;;
+    *host=*)                               # libpq keyword form: "host=... dbname=..."
+      host=$(printf '%s' "$url" | sed -nE 's/.*(^|[[:space:]])host=([^[:space:]]*).*/\2/p') ;;
+    *=*)
+      host=localhost ;;                    # keyword form without host= uses the local socket
+    *)
+      refuse "cannot tell where $dbvar points; use a URL, a file path, or host=... form" ;;
   esac
   if [ "$remote" = no ]; then
     case $host in
@@ -67,7 +81,11 @@ run_once() {   # $1 run number; prints pass, fail or could-not-run
   bash "$here/run-gate.sh" "exit-pair-$1-prove" "$limit" -- "$(with_env "$prove")" >/dev/null
   case $? in 0) echo pass ;; 3) echo could-not-run ;; *) echo fail ;; esac
 }
-report() { echo "EXIT-PAIR: $1 (runs: $2; logs: $REVIEW_WS/logs/exit-pair-*)"; }
+report() {   # stdout for the caller, and a durable record in the workspace
+  line="EXIT-PAIR: $1 (runs: $2; logs: $REVIEW_WS/logs/exit-pair-*)"
+  echo "$line"
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$line" >> "$REVIEW_WS/exit-pair.txt"
+}
 
 r1=$(run_once 1); r2=$(run_once 2)
 case "$r1 $r2" in *could-not-run*) report could-not-run "$r1 $r2"; exit 3 ;; esac

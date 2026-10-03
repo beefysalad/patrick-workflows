@@ -24,7 +24,8 @@ A builder/critic review loop on gauntlet principles: the builder never grades it
 - `--prove/--reset/--env-file/--db-pattern/--allow-remote`: passed straight to `exit-pair.sh`.
 
 ## 2. Setup (the only point where you may stop with a message to the user)
-1. Must be inside a git repository with a clean working tree (`git status --porcelain` empty). Otherwise stop: "Commit or stash your changes, then run /review-mine again."
+0. **Recover from an interrupted run first.** If `$(git rev-parse --git-path patrick-workflows-review-ws)` exists, read the workspace path in it. If that workspace's `state.md` says `status: running` and HEAD is detached, run `git checkout -- . && git clean -fd` (this only discards what a baseline gate wrote on the detached base commit) and then `git switch <restore_branch>`. Note the recovery in the new run's report.
+1. Must be on a branch (`git symbolic-ref -q HEAD` succeeds); refuse a detached HEAD: "Check out the branch you want reviewed, then run /review-mine again." Must be inside a git repository with a clean working tree (`git status --porcelain` empty). Otherwise stop: "Commit or stash your changes, then run /review-mine again."
 2. Unless `--no-fix`, refuse to run on the default branch: fixes are committed to the current branch.
 3. If `superpowers:test-driven-development` is not an available skill, stop and tell the user to install the superpowers plugin.
 4. Run `bash "$SKILL_DIR/scripts/workspace.sh"`; it prints the workspace path (call it `WS` below) and records it in the repo's git dir, so every other script finds it on its own. Never prefix commands with `REVIEW_WS=...`: allow rules match commands that start with `bash`, and a prefix makes every call prompt. Write workspace files with the Write/Edit tools at `WS/...`.
@@ -43,12 +44,13 @@ restore_branch: <current branch>
 status: running
 ```
 6. Detect gates: `package.json` scripts `test`, `lint`, `typecheck`/`type-check` (run with the repo's package manager); `Makefile` targets `test`, `lint`; `pyproject.toml` with pytest / ruff; `Cargo.toml` → `cargo test`, `cargo clippy`; `go.mod` → `go test ./...`, `go vet ./...`. Record them in `state.md` as `gate.<name>: <command>`. No gates found → record `gates: none` and say so in the report (correctness evidence is weaker).
-7. Baseline: `git switch --detach <base>`, run each gate as `bash "$SKILL_DIR/scripts/run-gate.sh" baseline-<name> 900 -- "<command>"`, then `git switch <branch>`. If anything fails in between, switch back first. Write `baseline.md` with each gate's status; failing gates are **known reds**. On resume, if HEAD is detached and `state.md` has `restore_branch`, switch back to it before anything else.
+7. Baseline: `git switch --detach <base>`, run each gate as `bash "$SKILL_DIR/scripts/run-gate.sh" baseline-<name> 900 -- "<command>"`, then `git checkout -- . && git clean -fd` (gates such as `lint --fix` may have written files on the base commit) and `git switch <branch>`. If anything fails in between, do that cleanup and switch back first. Write `baseline.md` with each gate's status, citing `logs/baseline-<name>.status`; failing gates are **known reds**.
 8. Run each gate on HEAD as `head-<name>`. A gate that is `could-not-run` or `timeout` on HEAD stops the run with that reason in the report.
 9. Write `bar.md`: the acceptance criteria (given or inferred), plus a `Deferred:` list, initially empty.
 
 ## 3. Round 1
-1. `bash "$SKILL_DIR/scripts/review-package.sh" <base> HEAD "<WS>/review/round-1/package"`. Also write `review/round-1/gates.md`: each gate's HEAD status compared with `baseline.md`.
+1. `bash "$SKILL_DIR/scripts/review-package.sh" <base> HEAD "<WS>/review/round-1/package"`. Also write `review/round-1/gates.md`: each gate's HEAD status (from `logs/head-<name>.status`) compared with `baseline.md`.
+   If `--scope` was given, run `bash "$SKILL_DIR/scripts/scope-check.sh" <base> <scope>` now: each `forbidden` file becomes a Critical finding ("revert this change") and each `out-of-scope` file a ruling, before any verdict can end the run.
 2. Dispatch critics **in one message, in parallel**, as `patrick-workflows:final-reviewer` with these models:
    - lite: one `combined` critic, model **opus**, `VERDICT_REQUIRED: yes`.
    - standard: `impact` (**opus**), `security+regression` (**opus**), `requirements+maintainability` (**sonnet**, `VERDICT_REQUIRED: yes`).
@@ -68,7 +70,7 @@ status: running
    - lite: do the fix round yourself, under `superpowers:test-driven-development`, with the same rules and the same report format.
 4. Re-run every gate yourself as `round<N>-<name>` (never trust the fixer's claim). A gate red on HEAD but not in the baseline becomes a new Critical finding with the log as evidence. If `--scope` was given, run `bash "$SKILL_DIR/scripts/scope-check.sh" <base> <scope>`: a `forbidden` file is a Critical finding ("revert this change"); `out-of-scope` files become rulings.
 5. `UNREPRODUCED` findings leave the loop: listed in the report (security first), never counted as fixed or dismissed.
-6. Fresh re-review: `bash "$SKILL_DIR/scripts/review-package.sh" <pre_fix sha> HEAD "<WS>/review/round-<N>/package"`, then dispatch `patrick-workflows:final-reviewer` (model sonnet, +1 budget; use the protected slot if it is the last dispatch) with `MODE: re-review`, `PACKAGE`, `BAR`, `GATES`, `VERDICT_REQUIRED: yes`, and `FINDINGS` = only IDs and titles of what the fix round touched (no earlier reasoning).
+6. Fresh re-review: `bash "$SKILL_DIR/scripts/review-package.sh" <pre_fix sha> HEAD "<WS>/review/round-<N>/package"`, then write `<WS>/review/round-<N>/package/RANGE.txt` saying: this diff is only the fix round (`<pre_fix>..HEAD`), not the branch; `-` lines are removals, so a revert of an earlier change appears as that change with the signs flipped; the whole branch's file list is `base-files.txt` (write it with `git diff --name-only <base> HEAD`). Tell the critic to read `RANGE.txt` first. Then dispatch `patrick-workflows:final-reviewer` (model sonnet, +1 budget; use the protected slot if it is the last dispatch) with `MODE: re-review`, `PACKAGE`, `BAR`, `GATES`, `VERDICT_REQUIRED: yes`, and `FINDINGS` = only IDs and titles of what the fix round touched (no earlier reasoning).
 7. **Evidence outranks opinion:** a behavioral finding whose red test now passes stays addressed unless the critic gave a NEW-TRIGGER; a NEW-TRIGGER becomes a new finding (round-N ID).
 8. New findings go through the evidence filter and get IDs `F<N>-<n>`.
 9. **Progress** (standard only): progress = the count of open Critical + Important findings fell by at least 1. Two consecutive rounds without progress → stop the loop (plateau).
@@ -76,6 +78,7 @@ status: running
 
 ## 5. Exit pair (only if `--prove` was given)
 Run after the loop exits with PASS: `bash "$SKILL_DIR/scripts/exit-pair.sh" --prove ... [reset options]`.
+The result line is also appended to `<WS>/exit-pair.txt`; cite it in the report.
 - `pass` / `pass, flake seen` → bar met (note the flake).
 - `fail` → a Critical finding citing the exit-pair logs; if rounds and budget remain, go back to section 4.
 - `flaky` → bar unmet with reason `flaky`; name the failing tests; never run a fix round on product code for it.

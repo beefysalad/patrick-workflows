@@ -44,7 +44,9 @@ if [ -z "$status" ]; then
     *) status=fail ;;
   esac
 fi
-echo "GATE $name: $status (exit $code, log: $log)"
+line="GATE $name: $status (exit $code, log: $log)"
+echo "$line"
+printf '%s\n' "$line" > "$ws/logs/$name.status"   # durable record of the result
 tail -n 30 "$log"
 case $status in
   pass) exit 0 ;;

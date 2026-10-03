@@ -13,6 +13,7 @@ assert_contains "$(cat "$REVIEW_WS/logs/ok.log")" "hello" "log captured"
 out=$(bash "$GATE" bad 5 -- "echo nope; exit 3"); code=$?
 assert_eq 1 "$code" "fail exits 1"
 assert_contains "$out" "GATE bad: fail (exit 3" "fail status line"
+assert_contains "$(cat "$REVIEW_WS/logs/bad.status")" "GATE bad: fail (exit 3" "status line recorded next to the log"
 
 out=$(bash "$GATE" missing 5 -- "definitely-not-a-command-xyz"); code=$?
 assert_eq 3 "$code" "missing command exits 3"
