@@ -1,7 +1,7 @@
-# Ticket Pipeline: Architecture (v6)
+# Ticket Pipeline: Architecture (v7)
 
 Date: 2026-10-03
-Status: Draft for review (v6: bars and grading — explicit PASS, graded rubric vs reference, exit pair; v5: own task driver, `/review-mine` first)
+Status: Draft for review (v7: bar/budget consistency, reset safety, score-noise handling, dev-server lifecycle, flaky triage; v6: bars and grading)
 Plugin: `patrick-workflows` (this repo)
 
 ## 1. Purpose
@@ -10,7 +10,7 @@ A repeatable, mostly autonomous pipeline that takes one ticket from "read it" to
 
 **Design stance.** Superpowers skills do the thinking work: brainstorming, planning (writing-plans), test-driven development, debugging, verification. This plugin owns the orchestration: ticket intake, the autonomy contract, its own task driver and ledger, baseline/permission/scope safety, a builder/critic review loop, and the human handoff. It does not steer superpowers' own executors, because depending on another plugin's ledger format and end-of-plan behavior would break silently on its updates.
 
-**Naming.** The review loop is a builder/critic loop built on gauntlet principles: the builder never grades its own work, critics are fresh, the bar is concrete, and the loop runs until clean or out of budget. It does not stop until every **bar** the ticket declares is met (section 9.5) or the cap is reached. Graded bars use a blind A/B comparison against a reference, as in the original pattern.
+**Naming.** The review loop is a builder/critic loop built on gauntlet principles: the builder never grades its own work, critics are fresh, the bar is concrete, and the loop runs until clean or out of budget. It does not stop until every **bar** the ticket declares is met (section 9.4) or the cap is reached. Graded bars use a blind A/B comparison against a reference, as in the original pattern.
 
 ### Success criteria
 - After plan and rules are approved, nothing is asked until the report, except the four stop conditions (section 7).
@@ -88,7 +88,8 @@ Integration/staging environments; multi-device or multi-model setups; parallel t
 | `scope-check.sh` | Classifies changed files (`git diff --name-only <base>..HEAD`) as in-scope, incidental, out-of-scope, or forbidden (section 8). Fails only on forbidden. |
 | `review-package.sh <base> <head> <out>` | Diff, changed symbols, and grep-derived callers/importers: a starting point for critics. |
 | `capture.sh <url> <out>` | Screenshots at desktop and phone widths for graded bars (headless browser). |
-| `exit-pair.sh` | Runs `reset` then `prove`, twice; passes only if both runs pass. |
+| `exit-pair.sh` | Verifies the reset target is disposable, then runs `reset` + `prove` twice; passes only if both pass; detects flakes. |
+| `dev-server.sh start\|stop\|status` | Dev-server lifecycle for captures: free port, readiness wait, PID file, cleanup on exit and resume. |
 
 ## 5. Workspace (local, outside the repo)
 
@@ -133,8 +134,8 @@ intake → designed → planned → approved → implementing → reviewing ⇄ 
 ready | blocked → handoff → (round2 → implementing) → pr → closed (after merge)
 ```
 - **Green** means no gate result is worse than the baseline: no new failures, and every gate ran.
-- **`ready`** requires green, no open Critical finding, **and every declared bar met** (section 9.5). Open Important findings at the cap do not block; they become SHIP questions.
-- Round 2: answers become rulings and new plan tasks; new implementation allotment; the review loop runs again with a fresh review budget, scoped to the round-2 diff.
+- **`ready`** requires green, no open Critical finding, **and every declared bar met** (section 9.4). Open Important findings at the cap do not block; they become SHIP questions.
+- Round 2: answers become rulings and new plan tasks; new implementation allotment; the review loop runs again with a fresh review budget. Findings review is scoped to the round-2 diff, but **graded and exit-pair bars re-run in full** on the whole feature.
 - Resume: re-running `/ticket <id>` reads state, ledger, `review/round-N/`, and `git log`.
 - Concurrency: one workspace per ticket; two tickets in one repo need separate checkouts.
 
@@ -143,7 +144,7 @@ User consulted only at PLAN (questions, approach, design, plan, autonomy brief) 
 
 BUILD stops only for: (1) an irreversible or destructive operation; (2) a security-sensitive action; (3) an out-of-repo side effect normally asked about first (push, publish, send); (4) a plan so broken every path is a guess. Everything else is decided by the orchestrator, recorded as a ruling (what, why, cost if wrong), and reported.
 
-**Permissions are part of the contract.** The brief proposes an allowlist (gate commands, `git add/commit/diff/log/status`, the scripts, workspace read/write). The user approves and adds it to their own settings; the pipeline never edits settings. Pre-flight dry-runs every gate; any permission prompt blocks `approved`.
+**Permissions are part of the contract.** The brief proposes an allowlist (gate commands, `git add/commit/diff/log/status`, the scripts, the dev command, workspace read/write). The user approves and adds it to their own settings; the pipeline never edits settings. Pre-flight dry-runs every gate; any permission prompt blocks `approved`.
 
 ## 8. Rulings, findings, autonomy brief, scope
 
@@ -161,10 +162,11 @@ Fingerprint: <file>:<symbol>:<trigger-hash>
 
 **Autonomy brief**, obtained in PLAN:
 - Acceptance criteria (written with the user if missing).
-- **Bars** (section 9.5): correctness always; a graded bar with reference, rubric and target when the ticket has a visual or quality reference; an exit pair when the ticket needs whole-feature or end-to-end proof (with its `prove` and `reset` commands).
+- **Bars** (section 9.4): correctness always; a graded bar with reference, rubric and target when the ticket has a visual or quality reference; an exit pair when the ticket needs whole-feature or end-to-end proof (with its `prove` and `reset` commands).
 - Worktree or main checkout; branch `<type>/<ticket-id>-<slug>`.
 - Gate commands with timeouts; baseline run on the base commit. Known reds are recorded; the start is blocked only if a gate **could not run** (missing command, timeout, environment error).
 - Scope: `allow` and `forbid` paths, plus the built-in **incidental** list.
+- For a graded bar: the dev command and routes. For an exit pair: `prove`, `reset`, and the disposable-target declaration (env file and database name/host pattern).
 - Review depth and budget; the permission allowlist; PR target and body conventions.
 
 **Scope classes** (`scope-check.sh`):
@@ -178,7 +180,7 @@ Fingerprint: <file>:<symbol>:<trigger-hash>
 ## 9. BUILD stage
 
 ### 9.1 Pre-flight
-Phase `approved` or `round2`; superpowers present; every gate run once on the base commit via `run-gate.sh` (baseline); allowlist confirmed by that run; base SHA frozen.
+Phase `approved` or `round2`; superpowers present; every gate run once on the base commit via `run-gate.sh` (baseline); dev server started and stopped once if a graded bar exists; reset target verified if an exit pair exists; allowlist confirmed by these runs; base SHA frozen.
 
 ### 9.2 Task driver (own; replaces superpowers' executors)
 For each plan task, sequentially:
@@ -200,31 +202,38 @@ Gate failures are triaged first (section 11). Implementation budget exhausted �
    - Then all gates and scope-check.
 6. **Fresh re-review:** a new `final-reviewer` dispatch in `re-review` mode gets the fix diff, the callers package for touched symbols, gate logs vs baseline, the bar, and the finding IDs and titles (titles carry the earlier framing; the critic is fresh, not blind). It marks each ID `ADDRESSED` / `NOT ADDRESSED` and may report new findings, which go through the evidence rule.
 7. **Evidence outranks opinion:** for a behavioral finding whose red test now passes, `NOT ADDRESSED` counts only if the critic supplies a **new trigger**; that becomes a new finding. Without a new trigger, the finding stays addressed.
-8. **Exit:** every declared bar met (section 9.5) → clean. Otherwise, if `round < rounds_max`, review budget remains, and no plateau (9.5) → next round on open findings and unmet bars. At the cap or plateau: open **Critical** or an unmet bar → `blocked` with the best result reached; open **Important** only → ruling deferring it plus a SHIP question. Termination is guaranteed by the cap.
+8. **Exit:** every declared bar met (section 9.4) → clean. Otherwise, if `round < rounds_max`, review budget remains, and no plateau (9.4) → next round on open findings and unmet bars. At the cap or plateau: open **Critical** or an unmet bar → `blocked` with the best result reached; open **Important** only → ruling deferring it plus a SHIP question. Termination is guaranteed by the cap.
 
-### 9.5 Bars and grading
+### 9.4 Bars and grading
 A ticket declares one or more bars at PLAN. The loop runs until all are met, a plateau is detected, or the cap is hit.
 
 | Bar | Applies to | Met when |
 |---|---|---|
-| **Correctness** (always) | every ticket | A fresh critic returns an explicit `PASS` verdict: every acceptance check is proven by evidence, no open Critical/Important finding, gates green vs baseline. Absence of findings alone is not a pass. |
-| **Graded** | UI, landing pages, docs, anything with a reference | A fresh critic scores the work **≥ target overall (default 4.0/5) with no criterion below 3**. Target set at PLAN (e.g. 3.5). |
-| **Exit pair** | whole-feature / end-to-end proof | The `prove` command passes **twice consecutively**, with `reset` run before each. One green run may be chance. |
+| **Correctness** (always) | every ticket | The latest fresh critic covering correctness returns an explicit `PASS`: the round-1 `requirements` (or `combined`) critic, or the re-review critic in later rounds; no extra dispatch. PASS means every acceptance check proven by evidence, no open Critical, no open Important **except those deferred by ruling**, gates green vs baseline. Absence of findings alone is not a pass. |
+| **Graded** | UI, landing pages, docs, anything with a reference | Two fresh scorers (the round's scorer, then a confirming scorer) each score ours **within a margin of the reference score (default: ≥ reference − 0.3) and ≥ an absolute floor (default 3.5), with no criterion below 3**. Margin and floor set at PLAN. |
+| **Exit pair** | whole-feature / end-to-end proof | `exit-pair.sh` runs `reset` then `prove` **twice consecutively**; both must pass. One green run may be chance. `reset` runs only against a target verified as disposable (below). |
 
 **Graded bar mechanics**
 - **Rubric** written at PLAN from the ticket: 3–6 criteria (e.g. layout fidelity, hierarchy, responsiveness, copy, accessibility), each with written anchors for scores 1, 3 and 5 so a score means the same thing every round.
 - **Reference**: an image, URL capture, existing page, or design export, stored in the workspace.
-- **Blind A/B**: the critic receives the reference and the current version labeled A and B in random order and scores both on the same rubric. It is not told which is ours. The report shows both scores.
+- **A/B scoring**: the scorer receives the reference and the current version labeled A and B in random order and scores both on the same rubric in the same dispatch. The blinding is partly cosmetic (different copy and branding usually reveal which is which); its real value is **calibration**: both scores come from the same critic's sense of what a 4 is, which is why the target is relative to the reference score. Fixed rubric anchors and fresh critics do the main work.
+- **Score noise**: fresh critics can differ by 0.3–0.5 on the same screenshots. So: the pass condition is relative to the reference; a passing score must be **confirmed by a second fresh scorer** before the bar is met; and progress counts only at **≥ 0.2** improvement.
 - **Evidence for UI** (`capture.sh`): start the dev server from the brief's command and wait for its port; screenshot each route at desktop (1440×900) and phone (390×844), light and dark, via Playwright's CLI (`npx playwright screenshot --viewport-size=… --full-page --color-scheme=…`), which needs no Playwright setup in the project. A URL reference is captured the same way; an image or design export is used as-is. Optional **scripted states** per route (e.g. "open the mobile menu") run as a short Playwright script and are captured too. Critics read the PNGs (Claude reads images), not just code. Fallback: Chrome's own headless screenshot mode. If neither is available, the graded bar is reported as `could-not-run`, never silently skipped. Static screenshots judge appearance; whether interactions work is covered by the exit pair.
 - **Fresh critic every round**, never shown earlier scores, so scores cannot creep upward by anchoring.
 - Each criterion below 4 must come with a concrete, actionable gap; that list drives the next fix round.
 
-**Plateau rule:** if the overall score (graded) or the open-finding count (correctness) does not improve for 2 consecutive rounds, stop early and report the best result; spending more rounds is unlikely to help.
+**Plateau rule (standard only; lite has 2 rounds and stops at its cap):** progress means the graded score rises by ≥ 0.2 or the open Critical/Important count falls by ≥ 1. Two consecutive rounds without progress → stop early and report the best result.
+
+**Reset safety.** `reset` is destructive, so it is never run on trust. At PLAN the brief must declare a disposable target: a dedicated env file (e.g. `.env.test`) and the expected database name/host pattern. `exit-pair.sh` loads only that env file and refuses to run `reset` unless the resolved target matches the pattern (and, by default, a local host). If PLAN cannot establish this, the exit pair is not offered; it is never discovered mid-BUILD.
+
+**Dev-server lifecycle** (`dev-server.sh start|stop|status`): picks a free port, starts the brief's dev command with that port, waits for readiness with a timeout, writes a PID file in the workspace, and stops the server on exit (trap) and after each capture. On resume, a stale PID file is cleaned up first. The dev command is on the allowlist, and pre-flight starts and stops it once.
+
+**Flaky tests.** If `prove` passes and fails on the same commit with no code change, it is classified as **flaky**, never as a product bug: one more pair is attempted; if still inconsistent, the exit pair is unmet with reason `flaky` and the failing tests are named in the report. No fix round touches product code for a flake.
 
 **Report:** per bar, the result and history, e.g. "Graded: 3.4 → 3.9 → 4.2 / target 4.0 (reference 4.4). Exit pair: pass, pass."
 
 
-### 9.4 Finish
+### 9.5 Finish
 Final gates vs baseline; `ready` if section 6's conditions hold, else `blocked`. No questions.
 
 ## 10. Review depth and cost
@@ -239,9 +248,11 @@ Chosen automatically from plan and diff size, shown in the PLAN summary; the use
 | Fixer | inline | `ticket-fixer` (Sonnet) |
 | Re-review | Sonnet | Sonnet |
 | `rounds_max` | 2 | 4 |
-| Review budget (reserved up front) | 4 | 12 (+3 per graded bar) |
+| Review budget (reserved up front) | 3 (+3 per graded bar) | 10 (+5 per graded bar) |
 
 - **Model ruling:** discovery is where missed bugs cost most, so the discovery critics for impact and security use Opus; checking a known fix is the easier job, so re-review uses Sonnet. Planner on Opus. No Haiku in Phase 1.
+- **Review budget math.** Standard: round-1 critics 3 + up to 3 later rounds × (fixer 1 + re-review 1) = 9, plus 1 protected = 10. Lite: 1 critic + 1 re-review (fix inline) = 2, plus 1 protected = 3. Graded bar adds one scorer per round plus one confirming scorer: standard 4 + 1 = 5, lite 2 + 1 = 3. Gaps from graded scoring go to the same fixer dispatch as findings. The exit pair is a script and costs no dispatches.
+- **Protected slot:** one review dispatch is reserved for the final re-review/PASS and cannot be consumed by re-dispatches of malformed output.
 - Budgets are dispatch caps tracked in state; a re-dispatch for malformed output counts. Not a token meter.
 - Context hygiene: gate output to files; critics get packages; subagents return short summaries.
 
@@ -253,6 +264,7 @@ Chosen automatically from plan and diff size, shown in the PLAN summary; the use
 | Setup/environment | Fix environment or record as blocker; never touch product code |
 | Known red (in `baseline.md`) | Not fixed; listed in report; does not count against green |
 | Could not run / timeout | One retry with a longer timeout if a ruling allows; otherwise `blocked` |
+| Flaky (same commit, pass and fail) | Not a product bug; one more exit pair; still inconsistent → exit pair unmet (`flaky`), tests named in the report |
 | Unknown | One `superpowers:systematic-debugging` pass; unresolved → stop condition 4 |
 
 ## 12. SHIP stage and the report
@@ -292,6 +304,8 @@ ID, URL, or pasted text, read with whatever tool the machine offers, or pasted. 
 | Implementation budget reached | Stop after current step; review loop runs on what exists. |
 | Review budget reached | Exit per 9.3.8. |
 | Malformed or evidence-free subagent output | One re-dispatch (counts), then stop condition 4. |
+| Dev server fails to start or never becomes ready | Graded bar `could-not-run`; reported; server stopped. |
+| Reset target not provably disposable | Exit pair refused at PLAN. |
 | Tracker unreachable | Ask the user to paste. |
 | Base branch moved | Reported; rebase only with approval. |
 
@@ -312,13 +326,13 @@ Before 1a:
 2. Read-only agents can read `~/.claude/tickets/...` without prompting once allowlisted (medium).
 3. Plugin agents ignore `hooks`, `permissionMode`, `mcpServers` frontmatter; nothing depends on them (medium-high).
 Before 1b:
-- Critics (read-only agents) can view screenshot images via Read; a headless browser is available or installable in the project for `capture.sh` (medium).
-4. A plugin agent with `Skill` can invoke `superpowers:writing-plans` / `test-driven-development` (medium).
-5. Subagents cannot dispatch subagents, so the main session orchestrates (high).
-6. Brainstorming/writing-plans honor the save-path, no-commit, no-execution-question overrides.
-7. Re-running `/ticket` after `/clear` resumes correctly.
+4. Critics (read-only agents) can view screenshot images via Read; a headless browser is available or installable in the project for `capture.sh` (medium).
+5. A plugin agent with `Skill` can invoke `superpowers:writing-plans` / `test-driven-development` (medium).
+6. Subagents cannot dispatch subagents, so the main session orchestrates (high).
+7. Brainstorming/writing-plans honor the save-path, no-commit, no-execution-question overrides.
+8. Re-running `/ticket` after `/clear` resumes correctly.
 
-Fallbacks: 2 fails → packages copied into the repo's git-ignored `.superpowers/` area. 4 fails → planner runs in the main session; implementer follows TDD from its brief text. 6 fails → PLAN writes design and plan inline.
+Fallbacks: 2 fails → packages copied into the repo's git-ignored `.superpowers/` area. 5 fails → planner runs in the main session; implementer follows TDD from its brief text. 7 fails → PLAN writes design and plan inline.
 
 ## 18. Decisions recorded
 1. One `/ticket` command with PLAN/BUILD/SHIP/CLOSE stages, plus `/review-mine`.
@@ -328,4 +342,4 @@ Fallbacks: 2 fails → packages copied into the repo's git-ignored `.superpowers
 5. Workspace in `~/.claude/tickets/`, local only.
 6. Own task driver; superpowers for skills, not control flow (v5).
 7. `/review-mine` built first (v5).
-8. The loop stops only when every declared bar is met, on a plateau, or at the cap: explicit PASS for correctness; graded ≥ 4.0/5 with no criterion below 3 by default; exit pair = two consecutive passing runs (v6).
+8. The loop stops only when every declared bar is met, on a plateau (standard), or at the cap: explicit PASS for correctness (deferred Importants excluded); graded = within 0.3 of the reference and ≥ 3.5, no criterion below 3, confirmed by a second scorer; exit pair = two consecutive passing runs against a verified disposable target (v6, v7).
