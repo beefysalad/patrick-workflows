@@ -1,0 +1,32 @@
+---
+name: ticket-ship
+description: SHIP stage of /ticket - writes one report with numbered questions, takes the user's answers, runs round 2 if they ask for changes, and opens a draft PR only on their explicit go-ahead after a secrets scan.
+---
+
+# SHIP
+
+Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../ticket-workspace/scripts/state.sh" <WS>/state.md`.
+
+## 1. Write the report (`WS/handoff.md`), in this order
+1. **Outcome:** `READY` or `BLOCKED: <reason>`; depth; tasks done / total; dispatches used / budgets.
+2. **Needs your decision:** numbered questions, each with your recommendation, answerable in a few words ("1 keep 2 change: ... 3 yes"). Include deferred Importants, out-of-scope files, unreproduced findings that need a call, blockers, and base drift. The last question is always "Open the draft PR? (yes / no)".
+3. **Unreproduced findings** (security first).
+4. **Severity downgrades.**
+5. **What changed:** `git diff --stat <base>..HEAD`, `git log --oneline <base>..HEAD`, scope classes from the last scope check.
+6. **Evidence:** gates vs baseline (known reds called out); red→green per task from `reports/task-N.md`; review-loop verdicts per round and the exit-pair result from `review-mine/`.
+7. **Rulings:** every entry of `rulings.md`, with cost if wrong.
+8. **Base drift:** if a remote exists, `git fetch origin <base_branch> -q` then `git rev-list --count <base>..origin/<base_branch>`. Non-zero → "Base moved by N commits; rebase before the PR?" is one of the questions.
+9. **Draft PR:** title `<type>(<id>): <title>`; body in `WS/pr-body.md` with Summary, Changes, How it was tested (the evidence), and the ticket reference. No tool attribution of any kind.
+
+`S phase handoff`. Show sections 1–2 in chat with the path to `handoff.md`, then wait for the answers.
+
+## 2. Answers
+- Record each answer as a ruling with `source: user`.
+- An answer that asks for a code change: append the needed tasks to `plan.md` under `## Round 2` (in the plan's task format, with tests), `S set round2 yes`, add their count to `tasks_total`, `S set budget_impl_max` to `budget_impl_used` + 4 × new tasks (2 × for lite), `S set preflight no`, `S phase round2`, and invoke `patrick-workflows:ticket-build`. Its review loop gets a fresh `--budget` and runs its bars on the whole branch.
+- "Rebase": `git rebase origin/<base_branch>`. On conflict: `git rebase --abort` and ask the user how to proceed. After a clean rebase, rerun the gates once and say so in the PR body.
+
+## 3. Open the PR (only after an explicit yes)
+1. Secrets: `git diff <base>..HEAD | bash "$SKILL_DIR/../ticket-workspace/scripts/secret-scan.sh" [--deny-file .claude/patrick-workflows-deny.txt] - "<WS>/pr-body.md"`; pass `--deny-file` only when the project has that file. Any hit → show the rule and location (never the value) and stop: this is security-sensitive and the user decides.
+2. Show the final PR title and body.
+3. `git push -u origin <branch>`, then `gh pr create --draft --base <pr_target> --title "<title>" --body-file "<WS>/pr-body.md"`.
+4. `S set pr_url <url>`, `S phase pr`. Give the user the URL and say that marking the ticket done after merge (CLOSE) arrives in a later version.
