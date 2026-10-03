@@ -32,6 +32,26 @@ only reaches other machines after `version` is bumped in
 | `hooks/hooks.json` | Hooks |
 | `templates/` | CLAUDE.md and settings.json to copy manually (plugins can't ship these) |
 
+## /review-mine
+
+Reviews the current branch with fresh critics, keeps only findings that come with evidence, fixes Critical and Important ones with a failing test first, re-reviews the fixes with a new critic, and stops at an explicit PASS, a plateau, or the budget. It commits fixes to your branch and never pushes.
+
+```
+/review-mine [base] [--depth lite|standard] [--criteria <file>] [--scope <file>] [--no-fix]
+             [--prove "<cmd>" [--reset "<cmd>" --env-file <file> --db-pattern <regex>]]
+```
+
+Working files go to `~/.claude/tickets/<repo>/_reviews/`, never into your project.
+
+**Permissions.** To run without prompts, allow these in your settings (confirmed in `docs/superpowers/spikes/2026-10-03-phase-1a.md`):
+- `Read(~/.claude/tickets/**)`, `Write(~/.claude/tickets/**)`, `Edit(~/.claude/tickets/**)`
+- `Bash(bash *skills/review-mine/scripts/*)`
+- your project's gate commands, for example `Bash(npm test*)`, `Bash(npm run lint*)`
+
+**Exit pair safety.** `--reset` runs only when the database in `--env-file` matches `--db-pattern` and its host is local. Anything else is refused before a reset runs.
+
+Tests: `bash tests/run.sh`. End-to-end: `tests/SMOKE.md`.
+
 ## Add a workflow
 
 1. Create the file in the right directory with kebab-case name and `description` frontmatter.
