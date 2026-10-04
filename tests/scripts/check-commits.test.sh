@@ -34,4 +34,7 @@ assert_contains "$out" "attribution trailer in $bad2" "footer commit flagged"
 
 out=$(bash "$CC" 2>&1); rc=$?
 assert_eq 1 "$rc" "default range without origin/main falls back to HEAD"
+out=$(bash "$CC" no-such-ref..HEAD 2>&1); rc=$?
+assert_eq 2 "$rc" "invalid range is bad input"
+assert_not_contains "$out" "OK:" "invalid range never prints OK"
 finish

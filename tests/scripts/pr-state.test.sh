@@ -30,4 +30,6 @@ out=$(cd "$repo" && STUB_STATE=ERROR PATH="$tmp/bin:$PATH" bash "$PS" --head-mat
 assert_eq 3 "$code" "gh failure exits 3"; assert_eq could-not-run "$out" "gh failure"
 out=$(cd "$repo" && STUB_STATE=MERGED STUB_HEAD= PATH="$tmp/bin:$PATH" bash "$PS" --head-matches 7 feat/x); code=$?
 assert_eq 3 "$code" "empty head exits 3"
+out=$(STUB_STATE=DRAFTISH PATH="$tmp/bin:$PATH" bash "$PS" 7); assert_eq "3:could-not-run" "$?:$out" "unexpected gh output is could-not-run"
+out=$(PATH="$tmp/bin:$PATH" bash "$PS" ""); assert_eq "3:could-not-run" "$?:$out" "empty argument is could-not-run"
 finish

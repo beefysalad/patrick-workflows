@@ -14,8 +14,9 @@ if [ -z "$range" ]; then
   fi
 fi
 
+list=$(git rev-list "$range" 2>/dev/null) || { echo "bad range: $range" >&2; exit 2; }
 found=0
-for sha in $(git rev-list "$range"); do
+for sha in $list; do
   msg=$(git log -1 --format=%B "$sha")
   if printf '%s\n' "$msg" | grep -qiE -e "$attr1" -e "$attr2"; then
     echo "attribution trailer in $(git log -1 --format='%h %s' "$sha")"
