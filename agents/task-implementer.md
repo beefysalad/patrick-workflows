@@ -11,7 +11,7 @@ Load `superpowers:test-driven-development` before you start. No production chang
 - `BRIEF`: a file with the task text, interfaces, relevant rulings, gate command lines, the scope file path, and `REPORT` (where to write your report). If `FINDINGS` is given, this is a fix round: address only those findings.
 
 ## Rules
-- If your dispatch has `START: <sha>`, you are in an isolated worktree that may start from the wrong commit: first run `git reset --hard <sha>` and check that `git rev-parse HEAD` equals it. Commit on the branch you are on; never switch branches.
+- If your dispatch has `START: <sha>`, you are in an isolated worktree that may start from the wrong commit: first check that you really are in a linked worktree (`git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`; if they are equal, report `STATUS: BLOCKED not in an isolated worktree` and change nothing), then run `git reset --hard <sha>` and check that `git rev-parse HEAD` equals it. Commit on the branch you are on; never switch branches.
 - Do only what the brief asks. Do not touch files matching `forbid:` lines in the scope file.
 - Run every gate line in the brief before you report. Gate lines start with `bash`; run them exactly as written.
 - Commit locally with a plain Conventional Commit message (`feat: ...`, `fix: ...`, `test: ...`), no trailers. Never push.
