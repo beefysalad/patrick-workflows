@@ -36,7 +36,7 @@ Each sub-project gets its own plan, is implemented with subagent-driven developm
 - **`capture.sh <base-url> <routes-file> <out-dir>`**: for each route, screenshots at 1440×900 and 390×844, light and dark, via `npx playwright screenshot --viewport-size=W,H --full-page --color-scheme=S`; falls back to Chrome headless (`--headless --screenshot --window-size`); prints `CAPTURE: ok N` or `CAPTURE: could-not-run <reason>`.
 - **`ui-scorer` agent** (read-only, Opus): receives folders `A/` and `B/` (reference and ours, randomly assigned by the orchestrator, recorded in the workspace only), the rubric, and returns scores per criterion for both plus a concrete gap for every criterion of ours below 4. It is never told which folder is ours.
 - **Pass rule:** ours ≥ reference − margin, ours ≥ floor, no criterion below `min_criterion`, confirmed by a second fresh scorer. Progress counts only at ≥ 0.2 improvement; plateau after 2 non-improving rounds (standard and full only).
-- **Integration:** the review loop treats the graded bar like correctness: unmet → its gaps go to the fixer with the findings; budget +5 per graded bar (standard), +3 (lite). `could-not-run` is reported, never skipped silently.
+- **Integration:** the review loop treats the graded bar like correctness: unmet → its gaps go to the fixer with the findings; budget +5 per graded bar (standard), +3 (lite). `could-not-run` is reported, never skipped silently, and ends the run BLOCKED rather than looping. The reference is one page, compared with the first route only; a non-2xx page is never captured (final review I3/I4).
 
 ### A2. CLOSE (implements base spec section 12a)
 - New stage skill `ticket-close`; router sends phase `pr` to it.

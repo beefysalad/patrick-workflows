@@ -34,7 +34,7 @@ printf 'dev: PORT=$PORT node server.js\nroutes: routes.txt\nreference: route:/re
 printf '/\n' > routes.txt
 cat > rubric.md <<'EOF'
 # Landing page rubric
-- Layout fidelity: 1 = no recognisable structure; 3 = header, hero and features present but misaligned; 5 = same structure and spacing as the reference.
+- Layout fidelity: 1 = no recognisable structure; 3 = header, hero and features present but misaligned; 5 = clear header, hero and feature sections, aligned on one grid with even spacing.
 - Visual hierarchy: 1 = everything the same weight; 3 = headline stands out, call to action does not; 5 = headline, call to action and features read in order at a glance.
 - Responsiveness: 1 = broken or overflowing on phone; 3 = usable on phone but cramped; 5 = designed for phone, single column, readable.
 - Dark mode: 1 = unreadable or unchanged; 3 = readable but harsh; 5 = deliberate dark palette with good contrast.

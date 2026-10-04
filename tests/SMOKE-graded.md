@@ -7,7 +7,7 @@ claude -p --plugin-dir "<repo>" --permission-mode acceptEdits \
 ```
 
 - [ ] Dev server started and stopped (no `node server.js` left running: `pgrep -f "node server.js"` is empty).
-- [ ] `graded/reference` and `graded/round-1/ours` contain 4 PNGs each.
+- [ ] `graded/reference`, `graded/round-1/ours` and `graded/round-1/ours-first` contain 4 PNGs each (`home-*`).
 - [ ] Two scorer files when round 1 passes; one when it fails; `graded-ab.sh verdict` lines in the report.
-- [ ] Gaps became visual findings for the fixer; scores improve across rounds or the run stops on plateau/cap with the best score reported.
+- [ ] Gaps became visual findings for the fixer (Expected states a quality, plus the do-not-copy sentence); the fix report has `FIXED-VISUAL captures:` lines; scores improve across rounds or the run stops on plateau/cap with the best score reported.
 - [ ] The scorer's folders never contain the mapping file.

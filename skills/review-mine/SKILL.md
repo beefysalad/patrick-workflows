@@ -74,7 +74,8 @@ status: running
 5. Assign IDs `F1-1, F1-2, ...`. Fingerprint = `<file>:<line rounded down to 10>:<first 8 chars of shasum of the trigger>`; duplicates keep the highest severity. Write `review/round-1/findings.md`.
 6. **Severity changes:** you may raise any severity. You may never lower a Critical. Lowering an Important to Minor requires a ruling in `rulings.md` (`R<n> — <title> / Decision / Why / Cost if wrong`), and it is listed under "Severity downgrades" in the report.
 7. Correctness verdict = the `requirements+maintainability` (or `combined`) critic's VERDICT.
-8. If VERDICT is PASS and no Critical or Important finding is open → go to section 5. If `--no-fix` → go to section 6.
+7b. With `--graded`: run section 4b now, before step 8. Its gaps join the open findings.
+8. If VERDICT is PASS, no Critical or Important finding is open, and the graded bar does not keep the loop going (see 4b, "Graded status") → go to section 5. If `--no-fix` → go to section 6.
 
 ## 4. Fix rounds (round N = 2, 3, ...)
 0. At the start of each fix round, increment `round` in `state.md` (round 1 is the first review).
@@ -82,26 +83,51 @@ status: running
 2. Record the pre-fix commit (`git rev-parse HEAD`) in `state.md` as `pre_fix`.
 3. Open Critical and Important findings go to the fix round; Minors are deferred.
    - standard: dispatch `patrick-workflows:ticket-fixer` (model sonnet, +1 budget) with `FINDINGS` (the open findings file), `GATES` (one `bash "$SKILL_DIR/scripts/run-gate.sh" fix<N>-<name> 900 -- "<command>"` line per gate), `SCOPE` (if given), `REPORT` (`review/round-<N>/fix-report.md`).
-   - lite: do the fix round yourself, under `superpowers:test-driven-development`, with the same rules and the same report format.
+   - Visual findings (Kind: visual, from 4b) go in the same `FINDINGS` file. When any is open, also pass `RECAPTURE` and `REFERENCE_IMAGES` (`<WS>/graded/reference`). `RECAPTURE` is these three lines with `<dev>` and `<routes>` from `graded.md` filled in and `<N>` set:
+     ```
+     bash "$SKILL_DIR/scripts/dev-server.sh" start "<dev>" 120
+     bash "$SKILL_DIR/scripts/capture.sh" <url printed by the DEV-SERVER: up line> "<routes>" "<WS>/review/round-<N>/captures"
+     bash "$SKILL_DIR/scripts/dev-server.sh" stop
+     ```
+   - lite: do the fix round yourself, under `superpowers:test-driven-development`, with the same rules and the same report format; fix visual findings exactly as `ticket-fixer`'s "Visual" section says, using the same `RECAPTURE` lines.
 4. Re-run every gate yourself as `round<N>-<name>` (never trust the fixer's claim). A gate red on HEAD but not in the baseline becomes a new Critical finding with the log as evidence. If `--scope` was given, run `bash "$SKILL_DIR/scripts/scope-check.sh" <base> <scope>`: a `forbidden` file is a Critical finding ("revert this change"); `out-of-scope` files become rulings.
 5. `UNREPRODUCED` findings leave the loop: listed in the report (security first), never counted as fixed or dismissed.
 6. Fresh re-review: `bash "$SKILL_DIR/scripts/review-package.sh" <pre_fix sha> HEAD "<WS>/review/round-<N>/package"`, then write `<WS>/review/round-<N>/package/RANGE.txt` saying: this diff is only the fix round (`<pre_fix>..HEAD`), not the branch; `-` lines are removals, so a revert of an earlier change appears as that change with the signs flipped; the whole branch's file list is `base-files.txt` (write it with `git diff --name-only <base> HEAD`). Tell the critic to read `RANGE.txt` first. Then dispatch `patrick-workflows:final-reviewer` (model sonnet, +1 budget; use the protected slot if it is the last dispatch) with `MODE: re-review`, `PACKAGE`, `BAR`, `GATES`, `VERDICT_REQUIRED: yes`, and `FINDINGS` = only IDs and titles of what the fix round touched (no earlier reasoning).
 7. **Evidence outranks opinion:** a behavioral finding whose red test now passes stays addressed unless the critic gave a NEW-TRIGGER; a NEW-TRIGGER becomes a new finding (round-N ID).
 8. New findings go through the evidence filter and get IDs `F<N>-<n>`.
+8b. With `--graded`: run section 4b for this round now, before steps 9 and 10. Its gaps join the open findings.
 9. **Progress** (standard only): progress = the count of open Critical + Important findings fell by at least 1. Two consecutive rounds without progress → stop the loop (plateau).
-10. Exit the loop when VERDICT is PASS, no Critical or Important is open, and the graded bar is met (when `--graded` was given); otherwise next round.
+10. Exit the loop when VERDICT is PASS, no Critical or Important is open, and the graded bar does not keep the loop going (see 4b, "Graded status"); otherwise next round. A graded bar that is `could-not-run` never keeps the loop going.
 
 ## 4b. Graded bar (only with `--graded`)
-Run in round 1 and after every fix round, before the re-review decides the exit.
-1. `bash "$SKILL_DIR/scripts/dev-server.sh" start "<dev>" 120`. `could-not-run` → the graded bar is `could-not-run` (reported, never skipped silently); go on without it.
-2. `bash "$SKILL_DIR/scripts/capture.sh" <url> <routes> "<WS>/graded/round-<N>/ours"`. Reference, once per run: `route:` → capture `<url><path>` the same way into `<WS>/graded/reference`; `url:` → capture that URL; `image-dir:` → use the folder as-is. If a capture prints `CAPTURE: could-not-run` (exit 3), stop the dev server and treat the graded bar as `could-not-run` for this run (reported, never skipped silently); do not run steps 4-7 on missing images.
+Runs at step 3.7b (round 1) and step 4.8b (each fix round). Once the graded bar is `could-not-run` for the run, skip this section for the rest of the run.
+
+**Graded status** (record it in `state.md` as `graded_status: met | not-met | could-not-run <reason>`):
+- `met`: both scorers pass. Does not keep the loop going.
+- `not-met`: verdict exit 1. Keeps the loop going: its gaps become findings (step 7).
+- `could-not-run` for the run (dev server, capture or reference failed): reported, never skipped silently, never retried, and never keeps the loop going. The outcome is BLOCKED (section 6).
+- `could-not-run` for the round (malformed scorer output, step 6): no gaps. If the loop goes on for another reason (open findings, VERDICT not PASS) and a round remains, 4b runs again in that round. Otherwise it becomes `could-not-run` for the run.
+
+**The reference is one page.** It is compared with the first route of the routes file only (the scorer compares the same file names, so both sides use the `home-*` names). Get it once per run, into `<WS>/graded/reference`:
+- `route:<path>`: write `<WS>/graded/reference-routes.txt` holding one line, `/`. With the dev server up (step 2), run `bash "$SKILL_DIR/scripts/capture.sh" "<url><path>" "<WS>/graded/reference-routes.txt" "<WS>/graded/reference"`.
+- `url:<u>`: the same, with `<u>` in place of `<url><path>` (no dev server needed for it).
+- `image-dir:<dir>`: `bash "$SKILL_DIR/scripts/graded-ab.sh" images "<dir>" "<WS>/graded/reference"`. Exit 2 → `could-not-run` for the run (no images).
+
+Steps:
+1. `bash "$SKILL_DIR/scripts/dev-server.sh" start "<dev>" 120`. `could-not-run` → the graded bar is `could-not-run` for the run (reason: the DEV-SERVER line); run step 3, then end this section.
+2. `bash "$SKILL_DIR/scripts/capture.sh" <url> <routes> "<WS>/graded/round-<N>/ours"` (`<url>` from the `DEV-SERVER: up` line), then get the reference as above if `<WS>/graded/reference` does not exist yet. capture.sh checks each URL's HTTP status first: a 404, 500 or any non-2xx page is `CAPTURE: could-not-run (HTTP <code> at <url>)`. Any capture that prints `CAPTURE: could-not-run` (exit 3) → the graded bar is `could-not-run` for the run (reason: that line); run step 3, then end this section (never run steps 4-7 on missing images).
 3. Always `bash "$SKILL_DIR/scripts/dev-server.sh" stop` before going on, even after a failure.
-4. `bash "$SKILL_DIR/scripts/graded-ab.sh" prepare "<WS>/graded/reference" "<WS>/graded/round-<N>/ours" "<WS>/graded/round-<N>/ab"`.
+4. `bash "$SKILL_DIR/scripts/graded-ab.sh" first-route "<WS>/graded/round-<N>/ours" <routes> "<WS>/graded/round-<N>/ours-first"`, then `bash "$SKILL_DIR/scripts/graded-ab.sh" prepare "<WS>/graded/reference" "<WS>/graded/round-<N>/ours-first" "<WS>/graded/round-<N>/ab"`.
 5. Dispatch `patrick-workflows:ui-scorer` (model opus, +1 budget) with `DIR_A`, `DIR_B` (the two `ab` folders) and `RUBRIC`. Save its output to `<WS>/graded/round-<N>/score-1.txt`.
-6. `bash "$SKILL_DIR/scripts/graded-ab.sh" verdict "<WS>/graded/round-<N>/ab.mapping" "<WS>/graded/round-<N>/score-1.txt" --margin <m> --floor <f> --min <n>`. If it passes, dispatch a second, fresh `ui-scorer` (+1) into `<WS>/graded/round-<N>/score-2.txt` and run the verdict on both full paths; the bar is met only if both pass. Exit 2 (bad input: malformed scorer output) → re-dispatch that scorer once (counts against the budget); still exit 2 → the graded bar is `could-not-run` for this round. Only exit 1 (fail) produces gaps for the fix round.
-7. Not met: read the mapping to know which side is ours, turn each `GAP <ours> <criterion>` line into a finding (Kind: visual, Severity: Important, Location: the route and viewport, Trigger/Expected/Actual from the gap) for the next fix round. The fixer verifies visual fixes by recapturing, not with a red test.
+6. `bash "$SKILL_DIR/scripts/graded-ab.sh" verdict "<WS>/graded/round-<N>/ab.mapping" "<WS>/graded/round-<N>/score-1.txt" --margin <m> --floor <f> --min <n>`. If it passes, dispatch a second, fresh `ui-scorer` (+1) into `<WS>/graded/round-<N>/score-2.txt` and run the verdict on both full paths; the bar is met only if both pass. Exit 2 (bad input: malformed scorer output) → re-dispatch that scorer once (counts against the budget); still exit 2 → `could-not-run` for the round. Only exit 1 (fail) produces gaps for the fix round. If any verdict prints `GRADED: tie on every criterion`, add a question to the report's "Needs your decision": "Round <N>: ours ties the reference on every criterion. Check that the fix did not copy the reference's markup, styles, text or images." with the recommendation to compare the diff with the reference.
+7. Not met: read the mapping to know which side is ours, and turn each `GAP <ours> <criterion>` line into a finding:
+   - Kind: visual. Severity: Important. Location: the first route and the viewport named in the gap.
+   - Trigger and Actual: from the gap.
+   - Expected: the rubric's quality for that criterion in your own words (e.g. "the call to action reads as the primary action at a glance on phone"). Never "match the reference" or "same as the reference".
+   - End every visual finding with this sentence, verbatim: "The reference is a quality target, not content to copy: do not copy its markup, styles, text, images or brand. Keep this page's own content and purpose. Reusing the project's shared components and design tokens is fine."
+   The fixer verifies visual fixes by recapturing (`RECAPTURE`, step 4.3), not with a red test.
 8. Progress for the plateau rule (standard and full): ours overall rising by at least 0.2. Two rounds without that → stop and report the best score.
-9. The report's Bars section lists ours and reference per round, e.g. `Graded: 3.4 → 3.9 → 4.2 (reference 4.4, margin 0.3)`.
+9. The report's Bars section lists ours and reference per round, e.g. `Graded: 3.4 → 3.9 → 4.2 (reference 4.4, margin 0.3)`, or `Graded: could-not-run (<reason>)`.
 
 ## 5. Exit pair (only if `--prove` was given)
 Run after the loop exits with PASS: `bash "$SKILL_DIR/scripts/exit-pair.sh" --label exit-pair-r<round> --prove ... [reset options]`.
@@ -115,13 +141,13 @@ The result line is also appended to `<WS>/exit-pair.txt`; cite it in the report.
 1. Run every gate one last time as `final-<name>`; compare with `baseline.md`.
 2. Outcome:
    - **ready**: no new reds vs baseline, VERDICT PASS, no open Critical, exit pair met (if requested), and the graded bar is met (when `--graded` was given).
-   - **blocked**: anything else. Open Importants at the cap are deferred with a ruling and listed as questions.
+   - **blocked**: anything else. Open Importants at the cap are deferred with a ruling and listed as questions. A graded bar that is `could-not-run` gives `BLOCKED: graded bar could not run (<reason>)`.
 3. Write `report.md`, in this order:
    1. Outcome line: `READY` or `BLOCKED: <reason>`, depth, rounds used, dispatches used / budget.
    2. Needs your decision: numbered questions, each with a recommendation (deferred Importants, out-of-scope rulings).
    3. Unreproduced findings, security first.
    4. Severity downgrades.
-   5. Bars: correctness verdict per round; exit pair result and runs.
+   5. Bars: correctness verdict per round; exit pair result and runs; with `--graded`, the graded line from 4b.9.
    6. Findings per round: raised, dropped for missing evidence, fixed (with red test names), deferred.
    7. Gates: baseline vs final, known reds called out.
    8. Commits made by fix rounds (`git log --oneline <head_start>..HEAD`).
