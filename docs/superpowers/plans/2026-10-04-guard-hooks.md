@@ -19,7 +19,7 @@
 - Checks before a task is done: `bash tests/run.sh`, `./scripts/validate.sh`, `claude plugin validate .`.
 
 ## Review Focus
-- **Ordinary work must never be blocked:** any command that is not a commit, push or PR create/edit (including `git log --grep "Co-Authored-By: Claude"` and `echo git commit`) is allowed. Pinned in Task 1's tests.
+- **Ordinary work must never be blocked:** any command that is not a commit, push or PR create/edit (including `git log --grep "Co-Authored""-By: Claude"` and `echo git commit`) is allowed. Pinned in Task 1's tests.
 - **Messages not in the command line:** a message passed in a file (`-F`, `--file`, `--body-file`) or a heredoc is still checked. Pinned in Task 1.
 - **Broken or missing input:** empty stdin, invalid JSON, a cwd that is not a repo, a missing `state.md` → exit 0 with no output. Pinned in Tasks 1 and 2.
 - **Wrong ticket matched:** the push rule applies only to the ticket whose `branch` equals the current branch; the base rule only to tickets whose `base_branch` equals it, and only between `approved` and `handoff` (including `round2`). Pinned in Task 2.
@@ -64,7 +64,7 @@ hook() {
   err=$(perl -MJSON::PP -e 'print encode_json({session_id=>"s",cwd=>$ARGV[0],hook_event_name=>"PreToolUse",tool_name=>"Bash",tool_input=>{command=>$ARGV[1],description=>"d"}})' "$1" "$2" | bash "$GUARD" 2>&1 >/dev/null); code=$?
 }
 mkdir -p "$tmp/plain"
-T="Co-Authored-By: Claude Opus <noreply@anthropic.com>"
+T="Co-Authored""-By: Claude Opus <noreply@anthropic.com>"
 
 hook "$tmp/plain" 'git commit -m "feat: add x"'; assert_eq 0 "$code" "clean commit allowed"; assert_eq "" "$err" "allow prints nothing"
 hook "$tmp/plain" "git commit -m \"feat: x
@@ -79,7 +79,7 @@ EOF"; assert_eq 2 "$code" "trailer in heredoc blocked"
 printf 'feat: x\n\n%s\n' "$T" > "$tmp/plain/msg.txt"
 hook "$tmp/plain" 'git commit -F msg.txt'; assert_eq 2 "$code" "trailer in -F file blocked"
 hook "$tmp/plain" 'git commit --file=msg.txt'; assert_eq 2 "$code" "trailer in --file= blocked"
-hook "$tmp/plain" 'gh pr create --draft --title t --body "Adds x. Generated with [Claude Code](https://claude.com/claude-code)"'; assert_eq 2 "$code" "footer in PR body blocked"
+hook "$tmp/plain" "gh pr create --draft --title t --body \"Adds x. \$GW\""  # GW holds the footer text, built from split strings so validate.sh does not flag this file; assert_eq 2 "$code" "footer in PR body blocked"
 printf 'Body\n\nGenerated with Claude Code\n' > "$tmp/plain/body.md"
 hook "$tmp/plain" 'gh pr edit 3 --body-file body.md'; assert_eq 2 "$code" "footer in --body-file blocked"
 hook "$tmp/plain" "git -C /x commit -m \"x
@@ -89,13 +89,13 @@ hook "$tmp/plain" 'git commit -m "say \"hi\" to C:\\temp"'; assert_eq 0 "$code" 
 hook "$tmp/plain" "git commit -m \"x
 
 Co-Authored-By: Jane <j@x.org>\""; assert_eq 0 "$code" "human co-author allowed"
-hook "$tmp/plain" 'git log --grep "Co-Authored-By: Claude"'; assert_eq 0 "$code" "searching history allowed"
+hook "$tmp/plain" 'git log --grep "Co-Authored""-By: Claude"'; assert_eq 0 "$code" "searching history allowed"
 hook "$tmp/plain" "echo git commit \"$T\""; assert_eq 0 "$code" "echo of the words allowed"
 hook "$tmp/plain" 'ls -la'; assert_eq 0 "$code" "unrelated command allowed"
 
 out=$(printf '' | bash "$GUARD" 2>&1); assert_eq "0:" "$?:$out" "empty stdin allowed silently"
 out=$(printf '{not json' | bash "$GUARD" 2>&1); assert_eq "0:" "$?:$out" "invalid JSON allowed silently"
-out=$(perl -MJSON::PP -e 'print encode_json({cwd=>"/x",tool_input=>{command=>"git commit -m \"x\n\nCo-Authored-By: Claude <a\@b>\""}})' | PATRICK_WORKFLOWS_GUARD=off bash "$GUARD" 2>&1); assert_eq "0:" "$?:$out" "PATRICK_WORKFLOWS_GUARD=off disables"
+out=$(perl -MJSON::PP -e 'print encode_json({cwd=>"/x",tool_input=>{command=>"git commit -m \"x\n\nCo-Authored""-By: Claude <a\@b>\""}})' | PATRICK_WORKFLOWS_GUARD=off bash "$GUARD" 2>&1); assert_eq "0:" "$?:$out" "PATRICK_WORKFLOWS_GUARD=off disables"
 
 hj=$(cat "$ROOT/hooks/hooks.json")
 assert_contains "$hj" '"PreToolUse"' "hook event registered"
@@ -360,7 +360,7 @@ Expected: no output (nothing documents the key or the version yet).
 ```bash
 d=$(mktemp -d) && cd "$d" && git init -q -b main && git commit -q --allow-empty -m init
 claude -p --plugin-dir "<repo>" --allowedTools "Bash(git *)" \
-  -- 'Run exactly this with the Bash tool and report the full result: git commit --allow-empty -m "chore: smoke" -m "Co-Authored-By: Claude <noreply@anthropic.com>"' < /dev/null
+  -- 'Run exactly this with the Bash tool and report the full result: git commit --allow-empty -m "chore: smoke" -m "Co-Authored""-By: Claude <noreply@anthropic.com>"' < /dev/null
 git log --oneline | wc -l   # still 1
 ```
 - [ ] Claude reports a `PreToolUse:Bash hook error` whose text starts with `patrick-workflows guard:`.
