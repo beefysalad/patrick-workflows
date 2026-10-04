@@ -38,6 +38,8 @@ hook "$tmp/plain" "git commit -m \"x
 Co-Authored-By: Jane <j@x.org>\""; assert_eq 0 "$code" "human co-author allowed"
 hook "$tmp/plain" "git log --grep \"$T\""; assert_eq 0 "$code" "searching history allowed"
 hook "$tmp/plain" "echo git commit \"$T\""; assert_eq 0 "$code" "echo of the words allowed"
+hook "$tmp/plain" 'git commit -m "x" -m "Co-Authored""-By: Claude <n@a.com>"'; assert_eq 2 "$code" "trailer split by adjacent quotes blocked"
+hook "$tmp/plain" "git commit -m 'x' -m 'Co-Author'ed-By:\\ Claude"; assert_eq 2 "$code" "trailer split by quotes and backslash blocked"
 hook "$tmp/plain" 'ls -la'; assert_eq 0 "$code" "unrelated command allowed"
 
 out=$(printf '' | bash "$GUARD" 2>&1); assert_eq "0:" "$?:$out" "empty stdin allowed silently"

@@ -49,7 +49,8 @@ $(cat "$p" 2>/dev/null)"
   done <<EOF
 $files
 EOF
-  if printf '%s\n' "$text" | grep -Eiq 'co-authored-by:[[:space:]]*claude|generated with \[?claude code'; then
+  # Drop quotes and backslashes first: the shell joins "Co-Authored""-By" back into one word.
+  if printf '%s\n' "$text" | tr -d "\"'\\\\" | grep -Eiq 'co-authored-by:[[:space:]]*claude|generated with \[?claude code'; then
     block 'remove the Claude co-author trailer or "Generated with Claude Code" footer from the commit message or PR text: this repo owner allows no tool attribution.'
   fi
 fi
