@@ -48,5 +48,10 @@ Done and tagged `v0.5.0`: guard hook (attribution always; push approval and base
 ## Sub-project C status (2026-10-04)
 Done and tagged `v0.6.0` (local until the user approves the push): `--depth full` (5 critics + `finding-challenger`, budget 16, 4 rounds); SHIP shows refuted findings with a reopen question. No end-to-end run of depth full yet (usage). Deferred minors: budget slack in the 16 math; "reply to overrule" undefined for standalone /review-mine.
 
+## Sub-project D status (2026-10-04)
+Done and tagged `v0.7.0` (local until the user approves the push): `waves.sh`, planner `Files:`/`Depends on:`, PLAN `parallel: on|off`, BUILD section 2b (agent worktrees reset to `START`, cherry-pick in plan order, resume). Final Opus review: 6 Important, all fixed. No end-to-end run of a parallel wave yet. Deferred minors: conflict re-run skips the budget check; waves.sh ignores Delete/Rename bullets, dirs and `./` paths; parallel gates on fixed ports may flake; `### Task` inside code fences is counted.
+
+All four sub-projects (A-D) of the completion spec are done.
+
 ## After A
 Sub-projects B (guardrail hooks), C (full review depth + challenger) and D (parallel tasks) each need a plan from the completion spec, then subagent-driven development with TDD, a final review, and a release. Each starts with the spike listed in the spec.
