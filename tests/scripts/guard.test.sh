@@ -89,4 +89,17 @@ git -C "$R" switch -q main
 hook "$R" 'git commit -m "fix: y"'; assert_eq 0 "$code" "missing state.md fails open"
 hook "$tmp/plain" 'git push'; assert_eq 0 "$code" "not a repo fails open"
 assert_eq "" "$err" "fail open prints nothing"
+# Quoted text and heredoc bodies are data, not commands (final review I1).
+ticket T-2 implementing feat/t-1
+git -C "$R" switch -q feat/t-1
+hook "$R" 'grep -rn "commit\|git push origin" skills/'; assert_eq 0 "$code" "quoted pattern is not a push"
+hook "$R" 'git commit -m "docs: then run; git push origin x"'; assert_eq 0 "$code" "push words inside a commit message"
+hook "$R" "git commit -F - <<'EOF'
+docs: steps
+git push origin feat/t-1
+EOF"; assert_eq 0 "$code" "push line inside a heredoc message"
+hook "$R" "cat > notes.md <<EOF
+git push -u origin feat/t-1
+EOF"; assert_eq 0 "$code" "push line inside a heredoc file"
+hook "$R" 'git status && git push'; assert_eq 2 "$code" "a real push after && still blocked"
 finish

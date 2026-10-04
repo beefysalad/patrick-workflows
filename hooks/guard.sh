@@ -27,8 +27,12 @@ cmd=$(field command)
 [ -n "$cmd" ] || exit 0
 dir=$(field cwd); [ -d "$dir" ] || dir=$PWD
 
-# has <ERE>: the command runs it at the start, or after ; & | ( { ` or $( (so "echo git commit" does not count).
-has() { printf '%s\n' "$cmd" | grep -Eq "(^|[;&|(\`{]) *$1"; }
+# has <ERE>: the command (outside quotes and heredocs) runs it at the start, or after ; & | ( { ` or $( (so "echo git commit" does not count).
+# shape: the command with heredoc bodies and quoted text removed, so data is never read as a command.
+shape=$(printf '%s\n' "$cmd" | perl -0777 -pe '
+  1 while s/<<-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n).*?(?:^|\n)[ \t]*\2[ \t]*(?=\n|\z)/<<$3/s;
+  s/"(?:[^"\\]|\\.)*"//gs; s/\x27[^\x27]*\x27//gs;' 2>/dev/null) || shape=$cmd
+has() { printf '%s\n' "$shape" | grep -Eq "(^|[;&|(\`{]) *$1"; }
 G='git( +-[Cc] +[^ ;&|]+)* +'   # git plus its -C/-c options
 is_commit() { has "${G}commit([[:space:]]|\$)"; }
 is_push() { has "${G}push([[:space:]]|\$)"; }
