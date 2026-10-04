@@ -15,14 +15,13 @@ Written 2026-10-04 so another session (for example Claude Code on the web) can c
 - Current plan: `docs/superpowers/plans/2026-10-03-ui-grading-close.md` (sub-project A: UI grading, CLOSE, minors). Version in `plugin.json` is already 0.4.0; **no v0.4.0 tag yet**.
 
 ## Sub-project A status
-Tasks 0–8 are built and reviewed. Commits through `65076a1`; Task 9 is `abd9d6a`; a follow-up fix is `8efdb54`.
+Built, reviewed and fixed (commits `ec0da47..HEAD`). The graded smoke run passed end to end and found two script defects (fixed in `ebb0517`). The final whole-branch review (Opus) found 6 Important issues, fixed in `fc1117b..6d60418`:
+- the fixer handles `Kind: visual` findings and is told not to copy the reference;
+- `capture.sh` refuses error pages (non-2xx), and a `route:`/`url:` reference is one page compared with the first route;
+- the graded bar runs before the loop exits, and a run-level `could-not-run` does not loop;
+- CLOSE closes issues by the stored `issue_url` and uses `git branch -D` only when the local tip equals the PR's merged head.
 
-Open work, in order:
-1. **Review `abd9d6a..8efdb54`** (the fix that deleted `commands/review-mine.md` and `commands/hello.md`). They had the same names as `skills/review-mine` and `skills/hello`, and Claude Code resolved the name to the 3-line command, so the skill's instructions never loaded. `/review-mine` still works as the skill's own slash command (verified). `validate.sh` now fails on "command shadows skill".
-2. **Task 9 fix round:** in `README.md`'s UI grading paragraph, (a) state the pass rule: ours ≥ reference − 0.3, ours ≥ 3.5, no criterion below 3, confirmed by a second independent scorer; (b) correct "Playwright (light theme)": Playwright captures light and dark; only the Chrome fallback is light only. Then a scoped re-review.
-3. **Graded smoke run:** `bash tests/fixture/ui-setup.sh <dir>`, then in that dir run `/review-mine main --graded graded.md --depth standard` (headless: see `tests/SMOKE-graded.md` for the allow rules). Tick its checklist from the workspace under `~/.patrick-workflows/tickets/<repo>/_reviews/`. Script defects are fixed test-first.
-4. **Final whole-branch review** of `ec0da47..HEAD` on the most capable model (superpowers `requesting-code-review/code-reviewer.md`), one fix wave, one scoped re-review.
-5. Tag `v0.4.0` and ask the user before pushing tags.
+Open work: rerun `tests/SMOKE-graded.md` after the fixes, then tag `v0.4.0` (ask the user before pushing tags).
 
 ## Decisions already made (rulings)
 - Work happens on `main` (the user approved every phase there).
@@ -39,7 +38,7 @@ Open work, in order:
 - graded-ab: option flags without a value exit 1 instead of 2; `rm -rf "$out"` trusts the caller; trailing whitespace/CRLF score lines rejected (fails closed).
 - pr-state: unexpected-output and empty-argument paths untested.
 - review-mine 4b: capture URL not tied to the `DEV-SERVER: up` line; retry/budget edge cases not spelled out.
-- ticket-close: `git branch -d` refuses after squash merges (reported, safe); old workspaces have no `type` key.
+- ticket-close: old workspaces have no `type` key.
 - README: rubric shown like an inline key; dev-command allow rule not mentioned.
 - Fixture: `SMOKE-graded.md` must run from the repo root and fails if the folder exists.
 
