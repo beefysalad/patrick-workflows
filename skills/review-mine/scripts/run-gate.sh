@@ -12,6 +12,11 @@ name=$1; limit=$2; cmd=$4
 ws=${REVIEW_WS:-}
 if [ -z "$ws" ]; then   # fall back to the pointer workspace.sh leaves in the repo's git dir
   ptr=$(git rev-parse --git-path patrick-workflows-review-ws 2>/dev/null) && [ -f "$ptr" ] && ws=$(head -n 1 "$ptr")
+  # A linked worktree (an agent worktree in parallel BUILD) has its own git dir: use the main one's pointer.
+  if [ -z "$ws" ]; then
+    ptr="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/patrick-workflows-review-ws"
+    [ -f "$ptr" ] && ws=$(head -n 1 "$ptr")
+  fi
 fi
 [ -n "$ws" ] || { echo "GATE $name: could-not-run (no workspace: REVIEW_WS unset and no pointer file)"; exit 3; }
 mkdir -p "$ws/logs" || { echo "GATE $name: could-not-run (cannot create $ws/logs)"; exit 3; }

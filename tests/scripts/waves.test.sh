@@ -43,4 +43,11 @@ bash "$WV" "$tmp/bad2.md" >/dev/null 2>&1; assert_eq 2 $? "unknown dependency is
 printf '# no tasks\n' > "$tmp/bad3.md"
 bash "$WV" "$tmp/bad3.md" >/dev/null 2>&1; assert_eq 2 $? "no tasks is bad input"
 bash "$WV" "$tmp/missing.md" >/dev/null 2>&1; assert_eq 2 $? "missing file is bad input"
+{ task 1 none src/x.js; task 2 1 src/a.js; task 3 none src/a.js; } > "$tmp/p7.md"
+assert_eq "Wave 1: 1
+Wave 2: 2
+Wave 3: 3" "$(bash "$WV" "$tmp/p7.md")" "a shared file with an earlier task keeps plan order"
+{ task 1 none src/a.js; task 2 "Task 1 (uses sha256 helper)" src/b.js; } > "$tmp/p8.md"
+assert_eq "Wave 1: 1
+Wave 2: 2" "$(bash "$WV" "$tmp/p8.md")" "only task numbers count on the Depends line"
 finish
