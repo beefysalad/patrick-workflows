@@ -9,7 +9,7 @@ Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../tick
 
 1. Phase must be `pr`. `STATE=$(bash "$SKILL_DIR/../ticket-workspace/scripts/pr-state.sh" <pr_url>)`.
    - `open` → say the PR is still open (and its URL); change nothing.
-   - `closed-unmerged` → say it was closed without merging; change nothing; suggest reopening or starting a new round with `/ticket <id>` after reopening.
+   - `closed-unmerged` → say it was closed without merging; change nothing; to continue, reopen the PR on GitHub and push changes to the branch yourself (CLOSE then reports it open); to abandon the ticket, delete its workspace folder (`ticket-ws.sh path <id>`) and the branch yourself.
    - `could-not-run` → say `gh` could not read the PR; change nothing.
 2. `merged`:
    1. Mark the ticket done with what the machine offers. Report which happened.

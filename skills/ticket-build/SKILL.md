@@ -21,6 +21,7 @@ Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../tick
 1. Phase must be `approved` or `round2`; HEAD on `branch`; tree clean.
 2. `bash "$R/workspace.sh" --at "<WS>/review-mine"` (sets the pointer every review script uses).
 3. Baseline, only when `round2` is `no` and HEAD equals `base`: run each gate as `bash "$R/run-gate.sh" baseline-<name> <gate_timeout> -- "<command>"`; write `WS/baseline.md` (status per gate, citing `review-mine/logs/baseline-<name>.status`; failing gates are known reds). For a known-red gate, also list the names of the failing tests from its log, so later runs can tell old failures from new ones. Write `WS/gates.txt` with one `<name>: <command>` line per gate. A gate that is `could-not-run` → `S phase implementing`, `S phase blocked`, ledger the reason, and go to section 4.
+3b. If `graded` is set: start and stop the dev server once (`bash "$R/dev-server.sh" start "<dev>" 120`, then `stop`) and capture the reference once into `review-mine/graded/reference` as review-mine section 4b describes. `could-not-run` → ask nothing (BUILD is autonomous): drop the graded bar with a ruling, `S set graded none`, and say so in the handoff.
 4. If `exit_pair` is not `none`: `bash "$R/exit-pair.sh" --check <flags>`; refused → drop it with a ruling and `S set exit_pair none`.
 5. `S phase implementing`, then `S set preflight done` (in this order, so a crash in between reruns pre-flight instead of leaving the phase behind).
 
@@ -45,8 +46,8 @@ When `parallel` is `on`, run section 2 wave by wave. If `bash "$R/waves.sh" "<WS
 3. Remove the wave's worktrees before anything runs in this checkout (test runners would scan the copies), keeping their branches: `git worktree unlock <path>` (agent worktrees are locked), then `git worktree remove --force <path>`.
 4. In plan order, for each task:
    - `STATUS: BLOCKED` → section 2 step 5; nothing is picked.
-   - Check `git merge-base --is-ancestor <wave_base> <branch>` and that `git rev-list --count <wave_base>..<branch>` is at least 1. Either fails (the reset to `START` did not happen, or nothing was committed) → ruling, and run the task again with section 2 step 4 on the current HEAD.
-   - Record `task_base` = `git rev-parse HEAD`; `git cherry-pick <wave_base>..<branch>`. A conflict → `git cherry-pick --abort`, ruling, and run the task again with section 2 step 4 on the current HEAD. Append `wave <k> task N picked <task_base>..<HEAD>`.
+   - Check `git merge-base --is-ancestor <wave_base> <branch>` and that `git rev-list --count <wave_base>..<branch>` is at least 1. Either fails (the reset to `START` did not happen, or nothing was committed) → ruling, and run the task again with section 2 steps 3–4 (budget check first) on the current HEAD.
+   - Record `task_base` = `git rev-parse HEAD`; `git cherry-pick <wave_base>..<branch>`. A conflict → `git cherry-pick --abort`, ruling, and run the task again with section 2 steps 3–4 (budget check first) on the current HEAD. Append `wave <k> task N picked <task_base>..<HEAD>`.
    - Section 2 steps 6–9 for that task (gates, review package `<task_base>..HEAD`, reviewer, fix rounds on this branch, ledger).
    - `git branch -D <branch>`.
 
@@ -54,7 +55,7 @@ When `parallel` is `on`, run section 2 wave by wave. If `bash "$R/waves.sh" "<WS
 
 ## 3. Review loop
 1. `S phase reviewing`.
-2. Invoke `patrick-workflows:review-mine` in embedded mode: base = `base`, `--workspace "<WS>/review-mine"` (round 2: `"<WS>/review-mine-r2"`, so round-1 evidence is kept), `--criteria "<WS>/bar.md"`, `--scope "<WS>/scope.txt"`, `--baseline "<WS>/baseline.md"`, `--gates "<WS>/gates.txt"`, `--gate-timeout <gate_timeout>`, `--depth <depth>`, `--budget <budget_review_max>`, `--graded "<graded>"` when `graded` is set, plus the `exit_pair` flags when set. The review covers the whole branch in both rounds, so every bar is judged on the whole feature. When the loop starts a fix round, `S phase fixing`; when it re-reviews, `S phase reviewing`.
+2. Invoke `patrick-workflows:review-mine` in embedded mode: base = `base`, `--workspace "<WS>/review-mine"` (round 2: `"<WS>/review-mine-r2"`, so round-1 evidence is kept), `--criteria "<WS>/bar.md"`, `--scope "<WS>/scope.txt"`, `--baseline "<WS>/baseline.md"`, `--gates "<WS>/gates.txt"`, `--gate-timeout <gate_timeout>`, `--depth <depth>`, `--budget <budget_review_max>`, `--graded "<graded>"` when `graded` is set and not `none`, plus the `exit_pair` flags when set. The review covers the whole branch in both rounds, so every bar is judged on the whole feature. When the loop starts a fix round, `S phase fixing`; when it re-reviews, `S phase reviewing`.
 3. Read `status` from that review workspace's `state.md`: `ready` → `S phase ready`; anything else → `S phase blocked`.
 
 ## 4. Hand over

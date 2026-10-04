@@ -11,7 +11,7 @@ Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../tick
 `git branch --show-current` must equal `branch`; if not and the tree is clean, `git switch <branch>`; if dirty, stop and tell the user. Never push any other branch.
 
 ## 1. Write the report (`WS/handoff.md`), in this order
-1. **Outcome:** `READY` or `BLOCKED: <reason>`; depth; tasks done / total; dispatches used / budgets. The PR title type is the `type` state key.
+1. **Outcome:** `READY` or `BLOCKED: <reason>`; depth; tasks done / total; dispatches used / budgets. The PR title type is the `type` state key (absent in workspaces from before v0.4.0: `fix` when the branch starts with `fix/`, else `feat`).
 2. **Needs your decision:** numbered questions, each with your recommendation, answerable in a few words ("1 keep 2 change: ... 3 yes"). Include deferred Importants, out-of-scope files, unreproduced findings that need a call, blockers, and base drift. The last question is always "Open the draft PR? (yes / no)".
 3. **Unreproduced findings** (security first). Then **Refuted by the challenger** (depth full): copy that section of `review-mine/report.md` (and `review-mine-r2/report.md`), Criticals first; each refuted Critical is also a question under "Needs your decision" ("Reopen F1-n? recommended: <keep closed | reopen>"). A reopened finding becomes an Important or Critical for round 2.
 4. **Severity downgrades.**
