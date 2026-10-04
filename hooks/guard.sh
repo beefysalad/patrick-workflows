@@ -3,6 +3,9 @@
 # Reads the hook JSON on stdin. Exit 0 allows the command; exit 2 blocks it and stderr tells Claude why.
 # Rule 1 (always): no tool attribution (a Claude co-author trailer or a "Generated with Claude Code"
 # footer) in git commit or gh pr create/edit text, including files passed with -F/--file/--body-file.
+# Rule 2 (a ticket for the current branch is in a phase before pr): git push needs push_approved: yes.
+# Rule 3 (a ticket based on the current branch is between approved and handoff): no git commit here.
+# Tickets are found with ticket-ws.sh list and read with state.sh; unreadable state allows the command.
 # Fails open: input it cannot read allows the command and prints nothing.
 # PATRICK_WORKFLOWS_GUARD=off in Claude Code's environment turns every rule off.
 set -u
@@ -50,4 +53,32 @@ EOF
     block 'remove the Claude co-author trailer or "Generated with Claude Code" footer from the commit message or PR text: this repo owner allows no tool attribution.'
   fi
 fi
+is_push || is_commit || exit 0
+TW="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../skills/ticket-workspace/scripts"
+br=$(git -C "$dir" branch --show-current 2>/dev/null) || exit 0
+[ -n "$br" ] || exit 0
+list=$(cd "$dir" && bash "$TW/ticket-ws.sh" list 2>/dev/null) || exit 0
+[ -n "$list" ] || exit 0
+PRE_PR=" intake designed planned approved implementing reviewing fixing ready blocked handoff round2 "
+IN_BUILD=" approved implementing reviewing fixing ready blocked handoff round2 "
+tab=$(printf '\t')
+while IFS=$tab read -r id phase; do
+  [ -n "$id" ] || continue
+  ws=$(cd "$dir" && bash "$TW/ticket-ws.sh" path "$id" 2>/dev/null) || continue
+  st="$ws/state.md"; [ -f "$st" ] || continue
+  tbranch=$(bash "$TW/state.sh" "$st" get branch 2>/dev/null)
+  if is_push && [ "$tbranch" = "$br" ]; then
+    case $PRE_PR in *" $phase "*)
+      [ "$(bash "$TW/state.sh" "$st" get push_approved 2>/dev/null)" = yes ] ||
+        block "ticket $id is in phase $phase: push only from /ticket's SHIP step, after the user approves the PR." ;;
+    esac
+  fi
+  if is_commit && [ "$(bash "$TW/state.sh" "$st" get base_branch 2>/dev/null)" = "$br" ]; then
+    case $IN_BUILD in *" $phase "*)
+      block "ticket $id is in progress on branch $tbranch, based on $br: commit on $tbranch, not on $br." ;;
+    esac
+  fi
+done <<EOF
+$list
+EOF
 exit 0

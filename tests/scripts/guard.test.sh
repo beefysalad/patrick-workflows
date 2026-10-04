@@ -48,4 +48,43 @@ hj=$(cat "$ROOT/hooks/hooks.json")
 assert_contains "$hj" '"PreToolUse"' "hook event registered"
 assert_contains "$hj" '"matcher": "Bash"' "Bash matcher"
 assert_contains "$hj" '${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh' "runs the guard from the plugin root"
+# A repo with tickets. Workspaces live under $TICKETS_HOME/<repo-slug>/<id>/state.md.
+R="$tmp/demo"; mkdir -p "$R"
+( cd "$R" && git init -q -b main && git remote add origin https://example.com/me/demo.git \
+  && git -c user.name=t -c user.email=t@x commit -q --allow-empty -m init && git branch feat/t-1 )
+ticket() { mkdir -p "$TICKETS_HOME/demo/$1"; printf 'ticket: %s\nphase: %s\nbranch: %s\nbase_branch: main\n%s' "$1" "$2" "$3" "${4:-}" > "$TICKETS_HOME/demo/$1/state.md"; }
+
+hook "$R" 'git push -u origin main'; assert_eq 0 "$code" "push with no tickets allowed"
+ticket T-1 implementing feat/t-1
+git -C "$R" switch -q feat/t-1
+hook "$R" 'git push -u origin feat/t-1'; assert_eq 2 "$code" "push before approval blocked"
+assert_contains "$err" "T-1" "push block names the ticket"
+ticket T-1 handoff feat/t-1 'push_approved: yes
+'
+hook "$R" 'git push -u origin feat/t-1'; assert_eq 0 "$code" "approved push allowed"
+ticket T-1 pr feat/t-1
+hook "$R" 'git push'; assert_eq 0 "$code" "push after the PR phase allowed"
+ticket T-1 implementing feat/t-1
+git -C "$R" switch -q main
+hook "$R" 'git push origin main'; assert_eq 0 "$code" "push of another branch allowed"
+
+hook "$R" 'git commit -m "fix: y"'; assert_eq 2 "$code" "commit on the base branch during a ticket blocked"
+assert_contains "$err" "feat/t-1" "base block names the ticket branch"
+for ph in intake designed planned pr closed; do
+  ticket T-1 "$ph" feat/t-1
+  hook "$R" 'git commit -m "fix: y"'; assert_eq 0 "$code" "commit on base allowed in phase $ph"
+done
+for ph in approved round2 handoff blocked; do
+  ticket T-1 "$ph" feat/t-1
+  hook "$R" 'git commit -m "fix: y"'; assert_eq 2 "$code" "commit on base blocked in phase $ph"
+done
+git -C "$R" switch -q feat/t-1
+ticket T-1 implementing feat/t-1
+hook "$R" 'git commit -m "feat: z"'; assert_eq 0 "$code" "commit on the ticket branch allowed"
+
+rm "$TICKETS_HOME/demo/T-1/state.md"
+git -C "$R" switch -q main
+hook "$R" 'git commit -m "fix: y"'; assert_eq 0 "$code" "missing state.md fails open"
+hook "$tmp/plain" 'git push'; assert_eq 0 "$code" "not a repo fails open"
+assert_eq "" "$err" "fail open prints nothing"
 finish
