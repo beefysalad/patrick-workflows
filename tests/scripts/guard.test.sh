@@ -102,4 +102,11 @@ hook "$R" "cat > notes.md <<EOF
 git push -u origin feat/t-1
 EOF"; assert_eq 0 "$code" "push line inside a heredoc file"
 hook "$R" 'git status && git push'; assert_eq 2 "$code" "a real push after && still blocked"
+# Cleanup round: more push forms, cd/-C targets, and mentions of the trailer text.
+hook "$R" 'git --no-pager push'; assert_eq 2 "$code" "git --no-pager push detected"
+hook "$R" 'env GIT_TRACE=0 git push'; assert_eq 2 "$code" "env-prefixed push detected"
+hook "$R" "$(printf '\tgit push')"; assert_eq 2 "$code" "tab before git detected"
+hook "$tmp/plain" "git -C \"$R\" push"; assert_eq 2 "$code" "quoted git -C path is the repo checked"
+hook "$tmp/plain" "cd \"$R\" && git push"; assert_eq 2 "$code" "cd X && uses X for ticket lookup"
+hook "$tmp/plain" "git commit -m \"docs: explain why $CO: Claude trailers are blocked\""; assert_eq 0 "$code" "mentioning the trailer mid-line is allowed"
 finish

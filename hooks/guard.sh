@@ -25,21 +25,31 @@ field() {
 }
 cmd=$(field command)
 [ -n "$cmd" ] || exit 0
-dir=$(field cwd); [ -d "$dir" ] || dir=$PWD
-
 # has <ERE>: the command (outside quotes and heredocs) runs it at the start, or after ; & | ( { ` or $( (so "echo git commit" does not count).
 # shape: the command with heredoc bodies and quoted text removed, so data is never read as a command.
 shape=$(printf '%s\n' "$cmd" | perl -0777 -pe '
   1 while s/<<-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n).*?(?:^|\n)[ \t]*\2[ \t]*(?=\n|\z)/<<$3/s;
   s/"(?:[^"\\]|\\.)*"//gs; s/\x27[^\x27]*\x27//gs;' 2>/dev/null) || shape=$cmd
-has() { printf '%s\n' "$shape" | grep -Eq "(^|[;&|(\`{]) *$1"; }
-G='git( +-[Cc] +[^ ;&|]+)* +'   # git plus its -C/-c options
+# An optional "env" and VAR=value prefixes may come before the command; any whitespace may lead.
+has() { printf '%s\n' "$shape" | grep -Eq "(^|[;&|(\`{])[[:space:]]*(env[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*$1"; }
+# git plus its global options (-C <dir>, -c <k=v>, --no-pager, --git-dir=...); a quoted -C path is empty in shape.
+G='git([[:space:]]+(-[Cc][[:space:]]+[^[:space:];&|]*|--[a-z][a-z-]*(=[^[:space:];&|]*)?|-[a-zA-Z]))*[[:space:]]+'
 is_commit() { has "${G}commit([[:space:]]|\$)"; }
 is_push() { has "${G}push([[:space:]]|\$)"; }
 is_pr() { has "gh +pr +(create|edit)([[:space:]]|\$)"; }
 block() { printf 'patrick-workflows guard: %s\n' "$1" >&2; exit 2; }
 
 is_commit || is_push || is_pr || exit 0
+
+# The folder the command acts in: the hook's cwd, moved by a leading "cd X &&" or by "git -C X".
+dir=$(field cwd); [ -d "$dir" ] || dir=$PWD
+target=$(printf '%s\n' "$cmd" | perl -ne '
+  if (/^\s*cd\s+(?:"([^"]*)"|\x27([^\x27]*)\x27|([^\s;&|]+))\s*&&/) { print defined $1 ? $1 : defined $2 ? $2 : $3; exit }
+  if (/\bgit\s+-C\s+(?:"([^"]*)"|\x27([^\x27]*)\x27|([^\s;&|]+))/) { print defined $1 ? $1 : defined $2 ? $2 : $3; exit }' 2>/dev/null)
+if [ -n "$target" ]; then
+  case $target in /*) t=$target ;; "~/"*) t="$HOME/${target#\~/}" ;; *) t="$dir/$target" ;; esac
+  [ -d "$t" ] && dir=$t
+fi
 
 # Rule 1: no tool attribution.
 if is_commit || is_pr; then
@@ -54,7 +64,7 @@ $(cat "$p" 2>/dev/null)"
 $files
 EOF
   # Drop quotes and backslashes first: the shell joins "Co-Authored""-By" back into one word.
-  if printf '%s\n' "$text" | tr -d "\"'\\\\" | grep -Eiq 'co-authored-by:[[:space:]]*claude|generated with \[?claude code'; then
+  if printf '%s\n' "$text" | tr -d "\"'\\\\" | grep -Eiq '(^[[:space:]]*|-m[[:space:]]*|--message[=[:space:]]*)co-authored-by:[[:space:]]*claude|generated with \[?claude code'; then
     block 'remove the Claude co-author trailer or "Generated with Claude Code" footer from the commit message or PR text: this repo owner allows no tool attribution.'
   fi
 fi
