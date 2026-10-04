@@ -58,7 +58,7 @@ Reviews the current branch with fresh critics, keeps only findings that come wit
              [--no-fix] [--prove "<cmd>" [--reset "<cmd>" --env-file <file> --db-pattern <regex>]]
 ```
 
-**UI grading.** For features with a visual or interactive component, pass a graded scoring configuration file. The file defines reference screenshots (`image-dir:`, `route:` or `url:`), routes to capture, dev command, rubric (3–6 criteria with anchors for scores 1, 3, and 5), and thresholds (margin 0.3, floor 3.5, min 3). Screenshots use Playwright via `npx --yes playwright screenshot --channel chrome` (light theme), falling back to headless Chrome (light only). Requires `Bash(npx --yes playwright*)` permission rule.
+**UI grading.** For features with a visual or interactive component, pass a graded scoring configuration file. The file defines reference screenshots (`image-dir:`, `route:` or `url:`), routes to capture, dev command, rubric (3–6 criteria with anchors for scores 1, 3, and 5), and thresholds (margin 0.3, floor 3.5, min 3). The check passes when our score is at least the reference score minus 0.3, at least 3.5 overall, with no criterion below 3, and a second independent scorer agrees. Screenshots use Playwright (default `npx --yes playwright screenshot --channel chrome`), which captures light and dark; only the headless Chrome fallback is light only. Requires `Bash(npx --yes playwright*)` permission rule.
 
 Working files go to `~/.patrick-workflows/tickets/<repo>/_reviews/` (override with `TICKETS_HOME`), never into your project. Claude Code refuses writes under `~/.claude/`, so the workspace lives outside it.
 
@@ -78,7 +78,7 @@ Tests: `bash tests/run.sh`. End-to-end: `tests/SMOKE.md`.
 1. Create the file in the right directory with kebab-case name and `description` frontmatter.
 2. Run `./scripts/validate.sh`.
 3. Bump `version` in `.claude-plugin/plugin.json`. This is required for the change to reach other machines.
-4. Commit (`feat:`), push, and `git tag vX.Y.Z`.
+4. Commit (`feat:`), run `bash scripts/check-commits.sh` before pushing, then push and `git tag vX.Y.Z`.
 
 ## Rules
 
