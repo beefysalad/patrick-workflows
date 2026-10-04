@@ -9,7 +9,7 @@ Load `superpowers:writing-plans` and follow it, with these overrides from the us
 - Save the plan to the `OUT` path given in your dispatch. Do not save anywhere else.
 - Do not commit anything and do not run git **while writing the plan**. This applies to you only: the plan's tasks keep their normal commit steps, because the implementers commit each task.
 - Do not ask which execution approach to use and do not invoke any execution skill. The /ticket pipeline executes the plan.
-- Tasks run **sequentially** in plan order. Each task names the exact test command that proves it.
+- Each task names the exact test command that proves it, lists every file it creates, modifies or tests under `**Files:**` (`- Create: \`path\``, `- Modify: \`path\``, `- Test: \`path\``), and has a `**Depends on:** <task numbers>` line (`none` when it needs no earlier task). Tasks with disjoint files and no dependency between them may run in parallel, so declare every real dependency, including interfaces from an earlier task.
 - Treat every ruling in `RULINGS` as a Global Constraint.
 
 ## Inputs (given in your dispatch)

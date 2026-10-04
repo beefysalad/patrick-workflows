@@ -7,3 +7,4 @@ settings.local.json
 tmp/
 scratch/
 .superpowers/
+.claude/worktrees/
