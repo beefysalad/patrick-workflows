@@ -13,7 +13,7 @@ Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../tick
 ## 1. Write the report (`WS/handoff.md`), in this order
 1. **Outcome:** `READY` or `BLOCKED: <reason>`; depth; tasks done / total; dispatches used / budgets. The PR title type is the `type` state key.
 2. **Needs your decision:** numbered questions, each with your recommendation, answerable in a few words ("1 keep 2 change: ... 3 yes"). Include deferred Importants, out-of-scope files, unreproduced findings that need a call, blockers, and base drift. The last question is always "Open the draft PR? (yes / no)".
-3. **Unreproduced findings** (security first).
+3. **Unreproduced findings** (security first). Then **Refuted by the challenger** (depth full): copy that section of `review-mine/report.md` (and `review-mine-r2/report.md`), Criticals first; each refuted Critical is also a question under "Needs your decision" ("Reopen F1-n? recommended: <keep closed | reopen>"). A reopened finding becomes an Important or Critical for round 2.
 4. **Severity downgrades.**
 5. **What changed:** `git diff --stat <base>..HEAD`, `git log --oneline <base>..HEAD`, scope classes from the last scope check.
 6. **Evidence:** gates vs baseline (known reds called out); red→green per task from `reports/task-N.md`; review-loop verdicts per round, graded scores per round and the exit-pair result from `review-mine/` (and `review-mine-r2/` after a round 2).
