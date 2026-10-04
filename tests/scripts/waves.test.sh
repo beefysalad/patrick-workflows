@@ -50,4 +50,15 @@ Wave 3: 3" "$(bash "$WV" "$tmp/p7.md")" "a shared file with an earlier task keep
 { task 1 none src/a.js; task 2 "Task 1 (uses sha256 helper)" src/b.js; } > "$tmp/p8.md"
 assert_eq "Wave 1: 1
 Wave 2: 2" "$(bash "$WV" "$tmp/p8.md")" "only task numbers count on the Depends line"
+# Cleanup round: Delete/Rename bullets, ./ paths, folders, fenced headings, duplicate numbers.
+{ task 1 none src/a.js; printf '### Task 2: rm\n\n**Files:**\n- Delete: `./src/a.js`\n- Modify: `src/z.js`\n\n**Depends on:** none\n\n'; task 3 none src/c.js; } > "$tmp/p9.md"
+assert_eq "Wave 1: 1 3
+Wave 2: 2" "$(bash "$WV" "$tmp/p9.md")" "Delete bullet and ./ prefix count as the same file"
+{ task 1 none src/lib/; task 2 none src/lib/x.js; } > "$tmp/p10.md"
+assert_eq "Wave 1: 1
+Wave 2: 2" "$(bash "$WV" "$tmp/p10.md")" "a folder overlaps the files inside it"
+{ task 1 none src/a.js; printf '```markdown\n### Task 9: example in a fence\n```\n\n'; task 2 none src/b.js; } > "$tmp/p11.md"
+assert_eq "Wave 1: 1 2" "$(bash "$WV" "$tmp/p11.md")" "headings inside code fences are not tasks"
+{ task 1 none src/a.js; task 1 none src/b.js; } > "$tmp/bad4.md"
+bash "$WV" "$tmp/bad4.md" >/dev/null 2>&1; assert_eq 2 $? "duplicate task number is bad input"
 finish
