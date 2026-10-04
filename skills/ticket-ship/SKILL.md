@@ -1,6 +1,6 @@
 ---
 name: ticket-ship
-description: SHIP stage of /ticket - writes one report with numbered questions, takes the user's answers, runs round 2 if they ask for changes, and opens a draft PR only on their explicit go-ahead after a secrets scan.
+description: SHIP stage of /start - writes one report with numbered questions, takes the user's answers, runs round 2 if they ask for changes, and opens a draft PR only on their explicit go-ahead after a secrets scan.
 ---
 
 # SHIP
@@ -32,4 +32,4 @@ Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../tick
 1. Secrets: `git diff <base>..HEAD | bash "$SKILL_DIR/../ticket-workspace/scripts/secret-scan.sh" [--deny-file .claude/patrick-workflows-deny.txt] - "<WS>/pr-body.md"`; pass `--deny-file` only when the project has that file. Any hit → show the rule and location (never the value) and stop: this is security-sensitive and the user decides.
 2. Show the final PR title and body.
 3. `S set push_approved yes` (the guard hook blocks a ticket's push without it), then `git push -u origin <branch>`, then `gh pr create --draft --base <pr_target> --title "<title>" --body-file "<WS>/pr-body.md"`.
-4. `S set pr_url <url>`, `S phase pr`. Give the user the URL and say that after the PR is merged they should run `/ticket <id>` once more to mark the ticket done and clean up.
+4. `S set pr_url <url>`, `S phase pr`. Give the user the URL and say that after the PR is merged they should run `/start <id>` once more to mark the ticket done and clean up.

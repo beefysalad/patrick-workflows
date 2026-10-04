@@ -32,18 +32,18 @@ only reaches other machines after `version` is bumped in
 | `hooks/` | PreToolUse guard (`guard.sh`, registered in `hooks.json`) |
 | `templates/` | CLAUDE.md and settings.json to copy manually (plugins can't ship these) |
 
-## /ticket
+## /start
 
 ```
-/ticket ABC-123        start or continue a ticket (ID, URL, or pasted text)
-/ticket                list tickets in this repo
+/start ABC-123        start or continue a ticket (ID, URL, or pasted text)
+/start                list tickets in this repo
 ```
 
 - **PLAN (with you):** reads the ticket, settles acceptance criteria, creates the branch (or a worktree, if you ask for one), brainstorms the design, writes the plan, and agrees an autonomy brief: gates, scope, review depth, budget, an optional exit pair, and the permission rules to add.
 - **BUILD (on its own):** one fresh implementer and reviewer per task, test first, gates re-run by the orchestrator, then the `/review-mine` loop. Asks nothing.
 - **SHIP (with you):** one report with numbered questions. Ask for changes and it runs a second round; say yes and it scans for secrets, then opens a draft PR.
 
-Run `/ticket <id>` again at any time to resume where it stopped. If another plugin also defines `/ticket` or `/review-mine`, use the namespaced form: `/patrick-workflows:ticket`, `/patrick-workflows:review-mine`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. After the PR is merged, run `/ticket <id>` once more: it marks the ticket done (a GitHub issue is closed by the URL recorded at intake, never by bare number) and cleans up. After a squash or rebase merge it deletes the local branch with `-D` only when the branch tip is exactly the commit GitHub merged; otherwise it keeps the branch and says why.
+Run `/start <id>` again at any time to resume where it stopped. If another plugin also defines `/start` or `/review-mine`, use the namespaced form: `/patrick-workflows:start`, `/patrick-workflows:review-mine`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. After the PR is merged, run `/start <id>` once more: it marks the ticket done (a GitHub issue is closed by the URL recorded at intake, never by bare number) and cleans up. After a squash or rebase merge it deletes the local branch with `-D` only when the branch tip is exactly the commit GitHub merged; otherwise it keeps the branch and says why.
 
 Optional: list company names and internal hostnames, one per line, in your work project's `.claude/patrick-workflows-deny.txt`. SHIP refuses to open a PR whose body or diff contains them.
 
@@ -58,9 +58,9 @@ Reviews the current branch with fresh critics, keeps only findings that come wit
              [--no-fix] [--prove "<cmd>" [--reset "<cmd>" --env-file <file> --db-pattern <regex>]]
 ```
 
-**Parallel tasks.** `/ticket`'s planner lists each task's files and dependencies; `waves.sh` groups tasks that share no files and do not depend on each other into waves. BUILD runs a wave's implementers at the same time, each in its own agent worktree, then cherry-picks their commits onto the ticket branch in plan order (a conflict reruns that task on its own) and reviews each task as usual. The brief shows the waves and a `parallel: on|off` switch (on by default; off for lite).
+**Parallel tasks.** `/start`'s planner lists each task's files and dependencies; `waves.sh` groups tasks that share no files and do not depend on each other into waves. BUILD runs a wave's implementers at the same time, each in its own agent worktree, then cherry-picks their commits onto the ticket branch in plan order (a conflict reruns that task on its own) and reviews each task as usual. The brief shows the waves and a `parallel: on|off` switch (on by default; off for lite).
 
-**Depths.** `lite` runs one Opus critic and fixes inline (budget 3 dispatches, 2 rounds). `standard` runs three critics and a fixer agent (budget 10, 4 rounds). `full` runs five critics (impact, security, regression, requirements, maintainability), then a `finding-challenger` (Opus) that tries to refute each Critical and Important finding from the code. Refuted findings never reach the fixer and are listed in the report under "Refuted by the challenger", where you can overrule them (budget 16, 4 rounds). `full` is only used when you ask for it; `/ticket` suggests it for security-sensitive plans with more than 5 tasks.
+**Depths.** `lite` runs one Opus critic and fixes inline (budget 3 dispatches, 2 rounds). `standard` runs three critics and a fixer agent (budget 10, 4 rounds). `full` runs five critics (impact, security, regression, requirements, maintainability), then a `finding-challenger` (Opus) that tries to refute each Critical and Important finding from the code. Refuted findings never reach the fixer and are listed in the report under "Refuted by the challenger", where you can overrule them (budget 16, 4 rounds). `full` is only used when you ask for it; `/start` suggests it for security-sensitive plans with more than 5 tasks.
 
 **UI grading.** For features with a visual or interactive component, pass a graded scoring configuration file. The file defines reference screenshots (`image-dir:`, `route:` or `url:`), routes to capture, dev command, a `rubric:` line pointing to a rubric file (3–6 criteria with anchors for scores 1, 3, and 5), and thresholds (margin 0.3, floor 3.5, min 3). The reference is one page, compared with the first route in the routes file; rubric anchors describe qualities, never "same as the reference", and fixers are told not to copy it (a tie on every criterion is raised as a question in the report). The check passes when our score is at least the reference score minus 0.3, at least 3.5 overall, with no criterion below 3, and a second independent scorer agrees. The dev command and the screenshot tool run inside the plugin's scripts, so the `Bash(bash *skills/*/scripts/*)` rule covers them. A page that answers with a non-2xx HTTP status is not captured, and a graded bar that cannot run (dev server, capture or reference failure) ends the review BLOCKED with the reason. Screenshots use Playwright (default `npx --yes playwright screenshot --channel chrome`), which captures light and dark; only the headless Chrome fallback is light only. Requires `Bash(npx --yes playwright*)` permission rule.
 
@@ -71,7 +71,7 @@ Working files go to `~/.patrick-workflows/tickets/<repo>/_reviews/` (override wi
 - `Bash(bash *skills/review-mine/scripts/*)`
 - your project's gate commands, for example `Bash(npm test*)`, `Bash(npm run lint*)`
 - optional: `Bash(gh pr view*)`, so the bar can be built from your PR description
-- for `/ticket` CLOSE: `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue view*)`, `Bash(gh issue close*)`
+- for `/start` CLOSE: `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue view*)`, `Bash(gh issue close*)`
 
 **Exit pair safety.** `--reset` runs only when the database in `--env-file` matches `--db-pattern` and its host is local. Anything else is refused before a reset runs.
 

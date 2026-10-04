@@ -1,6 +1,6 @@
 ---
 name: ticket-build
-description: BUILD stage of /ticket - runs the approved plan task by task with fresh implementers and reviewers, then the review-mine loop, without asking the user anything. Ends at ready or blocked and hands over to SHIP.
+description: BUILD stage of /start - runs the approved plan task by task with fresh implementers and reviewers, then the review-mine loop, without asking the user anything. Ends at ready or blocked and hands over to SHIP.
 ---
 
 # BUILD

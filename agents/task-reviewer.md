@@ -1,6 +1,6 @@
 ---
 name: task-reviewer
-description: Fresh, read-only review of one /ticket task against its brief and the rulings. Returns APPROVE or CHANGES with evidenced findings. Never edits files.
+description: Fresh, read-only review of one /start task against its brief and the rulings. Returns APPROVE or CHANGES with evidenced findings. Never edits files.
 tools: Read, Grep, Glob
 model: sonnet
 ---

@@ -18,7 +18,7 @@ A builder/critic review loop on gauntlet principles: the builder never grades it
 
 ## 1. Parse arguments
 - `base`: first positional argument; default `git merge-base HEAD origin/<default>` where `<default>` comes from `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback: the local `main` branch, then local `master`, when there is no `origin`).
-- `--depth`: `lite`, `standard` or `full`. `full` is used only when asked for (or set by `/ticket`'s brief). Default: `lite` if the diff has at most 3 files and 150 changed lines and no path contains auth, security, crypto, payment, billing, session, token, password or permission; otherwise `standard`.
+- `--depth`: `lite`, `standard` or `full`. `full` is used only when asked for (or set by `/start`'s brief). Default: `lite` if the diff has at most 3 files and 150 changed lines and no path contains auth, security, crypto, payment, billing, session, token, password or permission; otherwise `standard`.
 - `--criteria <file>`: acceptance criteria. Without it, build the bar from the PR description (`gh pr view --json title,body` if it works) and the branch's commit messages, and mark it `inferred` in `bar.md`.
 - `--scope <file>`: scope file for `scope-check.sh`. Optional.
 - `--no-fix`: run round 1 only and report.
@@ -35,7 +35,7 @@ margin: 0.3
 floor: 3.5
 min: 3
 ```
-- Embedded mode (used by `/ticket`): `--workspace <dir>` uses that directory (`bash "$SKILL_DIR/scripts/workspace.sh" --at <dir>`) instead of creating one; `--baseline <file>` copies that file to `<WS>/baseline.md` and skips setup step 7; `--budget <n>` and `--rounds-max <n>` override the depth defaults; `--gates <file>` (lines `<name>: <command>`) and `--gate-timeout <seconds>` replace gate detection, so setup step 6 is skipped and the review loop runs exactly the gates the caller agreed, under the same names as its baseline. In embedded mode the caller has already checked the tree and branch, so setup steps 0–2 are skipped. If `<WS>/state.md` already exists with `status: running`, this is a rerun after a crash: keep its `budget_used`, `round` and findings and continue from them.
+- Embedded mode (used by `/start`): `--workspace <dir>` uses that directory (`bash "$SKILL_DIR/scripts/workspace.sh" --at <dir>`) instead of creating one; `--baseline <file>` copies that file to `<WS>/baseline.md` and skips setup step 7; `--budget <n>` and `--rounds-max <n>` override the depth defaults; `--gates <file>` (lines `<name>: <command>`) and `--gate-timeout <seconds>` replace gate detection, so setup step 6 is skipped and the review loop runs exactly the gates the caller agreed, under the same names as its baseline. In embedded mode the caller has already checked the tree and branch, so setup steps 0–2 are skipped. If `<WS>/state.md` already exists with `status: running`, this is a rerun after a crash: keep its `budget_used`, `round` and findings and continue from them.
 
 ## 2. Setup (the only point where you may stop with a message to the user)
 0. **Recover from an interrupted run first.** If `$(git rev-parse --git-path patrick-workflows-review-ws)` exists, read the workspace path in it. If that workspace's `state.md` says `status: running` and HEAD is detached, run `git checkout -- . && git clean -fd` (this only discards what a baseline gate wrote on the detached base commit) and then `git switch <restore_branch>`. Note the recovery in the new run's report.
@@ -148,7 +148,7 @@ The result line is also appended to `<WS>/exit-pair.txt`; cite it in the report.
    1. Outcome line: `READY` or `BLOCKED: <reason>`, depth, rounds used, dispatches used / budget.
    2. Needs your decision: numbered questions, each with a recommendation (deferred Importants, out-of-scope rulings).
    3. Unreproduced findings, security first.
-   3b. Refuted by the challenger (full only): each refuted finding with its severity, the challenger's `path:line` and reason, Criticals first, and "Reply to overrule" so the user can reopen it (standalone: a reopened finding is fixed by the user or by a new `/review-mine` run whose `--criteria` names it; under `/ticket`, SHIP asks).
+   3b. Refuted by the challenger (full only): each refuted finding with its severity, the challenger's `path:line` and reason, Criticals first, and "Reply to overrule" so the user can reopen it (standalone: a reopened finding is fixed by the user or by a new `/review-mine` run whose `--criteria` names it; under `/start`, SHIP asks).
    4. Severity downgrades.
    5. Bars: correctness verdict per round; exit pair result and runs; with `--graded`, the graded line from 4b.9.
    6. Findings per round: raised, dropped for missing evidence, fixed (with red test names), deferred.

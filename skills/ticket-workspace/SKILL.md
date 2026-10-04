@@ -1,6 +1,6 @@
 ---
 name: ticket-workspace
-description: Reference for the /ticket pipeline - workspace layout, state keys, phase machine, ruling and finding formats, and the shared scripts. Read by every ticket stage skill; use when any /ticket stage starts.
+description: Reference for the /start pipeline - workspace layout, state keys, phase machine, ruling and finding formats, and the shared scripts. Read by every ticket stage skill; use when any /start stage starts.
 ---
 
 # Ticket workspace

@@ -85,7 +85,7 @@ while IFS=$tab read -r id phase; do
   if is_push && [ "$tbranch" = "$br" ]; then
     case $PRE_PR in *" $phase "*)
       [ "$(bash "$TW/state.sh" "$st" get push_approved 2>/dev/null)" = yes ] ||
-        block "ticket $id is in phase $phase: push only from /ticket's SHIP step, after the user approves the PR." ;;
+        block "ticket $id is in phase $phase: push only from /start's SHIP step, after the user approves the PR." ;;
     esac
   fi
   if is_commit && [ "$(bash "$TW/state.sh" "$st" get base_branch 2>/dev/null)" = "$br" ]; then

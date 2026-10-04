@@ -1,6 +1,6 @@
 ---
 name: task-implementer
-description: Implements exactly one /ticket plan task from its brief with test-driven development, runs the gates, commits locally, and writes a report. Never pushes.
+description: Implements exactly one /start plan task from its brief with test-driven development, runs the gates, commits locally, and writes a report. Never pushes.
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 model: sonnet
 ---

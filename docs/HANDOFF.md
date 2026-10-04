@@ -10,7 +10,7 @@ Written 2026-10-04 so another session (for example Claude Code on the web) can c
 - Checks: `./scripts/validate.sh`, `bash tests/run.sh`, `claude plugin validate .`.
 
 ## Where things are
-- Shipped: `/review-mine` (v0.2.0), `/ticket` PLAN/BUILD/SHIP + round 2 (v0.3.0).
+- Shipped: `/review-mine` (v0.2.0), `/start` PLAN/BUILD/SHIP + round 2 (v0.3.0).
 - Design for what remains: `docs/superpowers/specs/2026-10-03-pipeline-completion-design.md` (sub-projects A–D; Obsidian and a separate integration-test step are dropped by the user).
 - Current plan: `docs/superpowers/plans/2026-10-03-ui-grading-close.md` (sub-project A: UI grading, CLOSE, minors). Version in `plugin.json` is already 0.4.0; **no v0.4.0 tag yet**.
 

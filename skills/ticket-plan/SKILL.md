@@ -1,6 +1,6 @@
 ---
 name: ticket-plan
-description: PLAN stage of /ticket - read the ticket, settle acceptance criteria, create the branch, brainstorm the design, write the plan, and agree the autonomy brief with the user. The only interactive stage before BUILD; ends by starting BUILD.
+description: PLAN stage of /start - read the ticket, settle acceptance criteria, create the branch, brainstorm the design, write the plan, and agree the autonomy brief with the user. The only interactive stage before BUILD; ends by starting BUILD.
 ---
 
 # PLAN
@@ -46,7 +46,7 @@ Settle each item, then show the whole brief once for approval.
    - each gate command, e.g. `Bash(npm test*)`
    - `Bash(git add*)`, `Bash(git commit*)`, `Bash(git diff*)`, `Bash(git log*)`, `Bash(git status*)`, `Bash(git switch*)`, `Bash(git rev-parse*)`
    - with `parallel: on`: `Bash(git reset*)`, `Bash(git cherry-pick*)`, `Bash(git worktree*)`, `Bash(git branch*)`
-   - for `/ticket` CLOSE (used after the merge): `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue view*)`, `Bash(gh issue close*)`
+   - for `/start` CLOSE (used after the merge): `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue view*)`, `Bash(gh issue close*)`
 7. **Rulings:** record every decision made in this stage in `WS/rulings.md` with `source: user`.
 
 Ask for one approval of the brief. On approval:

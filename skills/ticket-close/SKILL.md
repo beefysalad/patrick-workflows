@@ -1,11 +1,11 @@
 ---
 name: ticket-close
-description: CLOSE stage of /ticket - once the ticket's PR is merged, marks the ticket done, cleans up the branch and worktree, and closes the workspace. Changes nothing while the PR is not merged.
+description: CLOSE stage of /start - once the ticket's PR is merged, marks the ticket done, cleans up the branch and worktree, and closes the workspace. Changes nothing while the PR is not merged.
 ---
 
 # CLOSE
 
-Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../ticket-workspace/scripts/state.sh" <WS>/state.md`. Ask nothing; running `/ticket <id>` is the request.
+Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../ticket-workspace/scripts/state.sh" <WS>/state.md`. Ask nothing; running `/start <id>` is the request.
 
 1. Phase must be `pr`. `STATE=$(bash "$SKILL_DIR/../ticket-workspace/scripts/pr-state.sh" <pr_url>)`.
    - `open` → say the PR is still open (and its URL); change nothing.

@@ -1,4 +1,4 @@
-# /ticket smoke test
+# /start smoke test
 
 ## Run A (headless): BUILD and SHIP from a seeded ticket
 ```bash
@@ -7,7 +7,7 @@ bash tests/fixture/seed-ticket.sh /tmp/tk-shop
 cd /tmp/tk-shop
 claude -p --plugin-dir "<repo>" --permission-mode acceptEdits \
   --allowedTools "Read(~/.patrick-workflows/**)" "Edit(~/.patrick-workflows/**)" "Bash(bash *)" "Bash(git *)" "Bash(npm *)" "Bash(node *)" "Skill" "Agent" "Read" "Grep" "Glob" "Write" "Edit" \
-  -- "/ticket FX-1" < /dev/null
+  -- "/start FX-1" < /dev/null
 ```
 Expected:
 - [ ] BUILD resumes at `approved`; no questions until the SHIP report.
@@ -22,7 +22,7 @@ Expected:
 ```bash
 bash tests/fixture/setup.sh /tmp/tk-shop-2 && cd /tmp/tk-shop-2 && claude --plugin-dir "<repo>"
 ```
-`/ticket`, then paste the FX-1 ticket text from `tests/fixture/seed-ticket.sh`.
+`/start`, then paste the FX-1 ticket text from `tests/fixture/seed-ticket.sh`.
 - [ ] Asked for an ID; acceptance criteria confirmed; branch name proposed.
 - [ ] Design saved to the workspace, not `docs/`; nothing committed during PLAN.
 - [ ] Plan written by `ticket-planner` into the workspace; brief shown once; permission rules printed.
