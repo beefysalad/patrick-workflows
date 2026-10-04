@@ -29,7 +29,7 @@ only reaches other machines after `version` is bumped in
 | `skills/<name>/SKILL.md` | Skills |
 | `commands/<name>.md` | Slash commands |
 | `agents/<name>.md` | Subagents |
-| `hooks/hooks.json` | Hooks |
+| `hooks/` | PreToolUse guard (`guard.sh`, registered in `hooks.json`) |
 | `templates/` | CLAUDE.md and settings.json to copy manually (plugins can't ship these) |
 
 ## /ticket
@@ -72,6 +72,14 @@ Working files go to `~/.patrick-workflows/tickets/<repo>/_reviews/` (override wi
 **Exit pair safety.** `--reset` runs only when the database in `--env-file` matches `--db-pattern` and its host is local. Anything else is refused before a reset runs.
 
 Tests: `bash tests/run.sh`. End-to-end: `tests/SMOKE.md`.
+
+## Guardrails
+A `PreToolUse` hook on Bash (`hooks/guard.sh`) blocks:
+- **Tool attribution, always:** a `git commit` or `gh pr create`/`edit` whose message or PR text (including `-F`, `--file` and `--body-file` files and heredocs) carries a Claude co-author trailer or a "Generated with Claude Code" footer.
+- **Unapproved pushes, during a ticket:** `git push` from a ticket's branch before phase `pr`, unless SHIP recorded `push_approved: yes` after your go-ahead.
+- **Base-branch commits, during a ticket:** `git commit` on a ticket's `base_branch` from `approved` to `handoff`.
+
+It fails open: unreadable input or ticket state allows the command, and every other command passes untouched. To turn it off for a session, start Claude Code with `PATRICK_WORKFLOWS_GUARD=off` in its environment (setting it inside a Bash command does nothing, because the hook runs in Claude Code's environment). Known limits: a message built at runtime (for example `-m "$(cat file)"`) is not seen, and `git -C <dir>` uses the session folder for ticket lookups.
 
 ## Add a workflow
 

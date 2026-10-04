@@ -27,10 +27,12 @@ handoff.md      the SHIP report; pr-body.md the draft PR body
 ```
 
 ## State keys
-`ticket`, `title`, `phase`, `branch`, `base` (sha), `base_branch`, `checkout` (`main` or the worktree path), `depth` (`lite`|`standard`), `tasks_total`, `tasks_done`, `round2` (`no`|`yes`), `budget_impl_max`, `budget_impl_used`, `budget_review_max`, `gate.<name>` (command), `gate_timeout`, `exit_pair` (`none` or the exit-pair flags), `pr_target`, `pr_url`, `preflight` (`done`), `type` (`feat`|`fix`), `graded` (path to `graded.md`), `issue_url` (GitHub issue URL, set at intake; CLOSE closes the issue by it).
+`ticket`, `title`, `phase`, `branch`, `base` (sha), `base_branch`, `checkout` (`main` or the worktree path), `depth` (`lite`|`standard`), `tasks_total`, `tasks_done`, `round2` (`no`|`yes`), `budget_impl_max`, `budget_impl_used`, `budget_review_max`, `gate.<name>` (command), `gate_timeout`, `exit_pair` (`none` or the exit-pair flags), `pr_target`, `pr_url`, `preflight` (`done`), `type` (`feat`|`fix`), `graded` (path to `graded.md`), `issue_url` (GitHub issue URL, set at intake; CLOSE closes the issue by it), `push_approved` (`yes` once the user approved the PR; SHIP sets it right before pushing).
 
 ## Phases
 `bash state.sh <WS>/state.md phase <new>` is the only way to change phase; it refuses illegal jumps and logs every change.
+
+**Guard hook.** While a ticket is open, the plugin's PreToolUse hook (`hooks/guard.sh`) blocks `git push` from the ticket branch before phase `pr` unless `push_approved: yes`, and blocks `git commit` on the ticket's `base_branch` from `approved` to `handoff` (including `blocked` and `round2`). It always blocks tool attribution in commits and PRs. A block is a message to act on (commit on the ticket branch; push only from SHIP), never a reason to work around the hook.
 ```
 intake → designed → planned → approved → implementing → reviewing ⇄ fixing → ready
 implementing | reviewing | fixing → blocked
