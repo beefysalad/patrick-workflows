@@ -63,4 +63,29 @@ GRADED_AB_FORCE=A bash "$GA" prepare "$tmp/ref" "$tmp/ours" "$tmp/slash/"; asser
 assert_eq "ours=A" "$(cat "$tmp/slash.mapping")" "mapping at sibling of slash dir"
 [ -e "$tmp/slash/.mapping" ] || [ -e "$tmp/slash/mapping" ] && _ko "mapping inside slash dir" || _ok
 
+# first-route: the first route's images, renamed to the "home" slug the one-page reference uses.
+mkdir -p "$tmp/cap"; for v in desktop-light desktop-dark phone-light phone-dark; do echo "p$v" > "$tmp/cap/pricing-plans-$v.png"; echo "h$v" > "$tmp/cap/home-$v.png"; done
+echo "http://x" > "$tmp/cap/capture.log"; echo x > "$tmp/cap/pricing-plans-extra-desktop-light.png"
+printf '# routes\n\n /pricing/plans/ \n/\n' > "$tmp/fr-routes.txt"
+mkdir -p "$tmp/fr"; echo stale > "$tmp/fr/old.png"
+bash "$GA" first-route "$tmp/cap" "$tmp/fr-routes.txt" "$tmp/fr"; assert_eq 0 $? "first-route exits 0"
+assert_eq "pdesktop-light" "$(cat "$tmp/fr/home-desktop-light.png" 2>/dev/null)" "first route copied as home"
+assert_eq "pphone-dark" "$(cat "$tmp/fr/home-phone-dark.png" 2>/dev/null)" "all four variants"
+assert_eq "home-desktop-dark.png home-desktop-light.png home-phone-dark.png home-phone-light.png" "$(ls "$tmp/fr" | tr '\n' ' ' | sed 's/ $//')" "only the four first-route images, nothing stale"
+printf '/\n' > "$tmp/fr-root.txt"; bash "$GA" first-route "$tmp/cap" "$tmp/fr-root.txt" "$tmp/fr2"
+assert_eq "hdesktop-light" "$(cat "$tmp/fr2/home-desktop-light.png" 2>/dev/null)" "route / stays home"
+printf '/none\n' > "$tmp/fr-none.txt"; bash "$GA" first-route "$tmp/cap" "$tmp/fr-none.txt" "$tmp/fr3" 2>/dev/null; assert_eq 2 $? "no images for the first route is bad input"
+# images: an image-dir: reference copied into the reference folder (images only, old content removed).
+mkdir -p "$tmp/idir" "$tmp/iref"; echo i > "$tmp/idir/home-desktop-light.png"; echo t > "$tmp/idir/notes.txt"; echo stale > "$tmp/iref/old.png"
+bash "$GA" images "$tmp/idir" "$tmp/iref"; assert_eq 0 $? "images exits 0"
+assert_eq "home-desktop-light.png" "$(ls "$tmp/iref")" "only images copied, stale removed"
+bash "$GA" images "$tmp/empty" "$tmp/iref2" 2>/dev/null; assert_eq 2 $? "image dir with no images is bad input"
+# A tie on every criterion (a likely copy of the reference) is flagged; the verdict is unchanged.
+printf 'A Layout fidelity: 4.5\nA Responsiveness: 4\nB Layout fidelity: 4.5\nB Responsiveness: 4.0\n' > "$tmp/tie.txt"
+out=$(bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/tie.txt"); code=$?
+assert_eq 0 "$code" "a tie still passes"
+assert_contains "$out" "GRADED: tie on every criterion (scorer 1)" "tie flagged"
+out=$(bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/s1.txt")
+assert_not_contains "$out" "tie" "no tie flag when scores differ"
+
 finish

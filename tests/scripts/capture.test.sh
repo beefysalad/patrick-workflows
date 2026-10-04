@@ -14,7 +14,14 @@ cat > "$tmp/chrome-ok.sh" <<'SH'
 for a; do case $a in --screenshot=*) printf 'PNG' > "${a#--screenshot=}" ;; esac; done
 SH
 printf '#!/usr/bin/env bash\nexit 1\n' > "$tmp/chrome-bad.sh"
+# curl stub: prints the HTTP status; any URL containing "missing" is a 404.
+cat > "$tmp/curl-stub.sh" <<'SH'
+#!/usr/bin/env bash
+for last; do :; done; echo "$last" >> "$(dirname "$0")/curl-urls.log"
+case $last in *missing*) printf 404 ;; *) printf 200 ;; esac
+SH
 chmod +x "$tmp"/*.sh
+export CAPTURE_CURL="$tmp/curl-stub.sh"
 
 out=$(CAPTURE_PW="$tmp/pw-ok.sh" bash "$CP" http://127.0.0.1:1234/ "$tmp/routes.txt" "$tmp/shots a"); code=$?
 assert_eq 0 "$code" "playwright path exits 0"
@@ -47,4 +54,13 @@ out=$(CAPTURE_PW="$tmp/pg/pw-ok.sh" bash "$CP" http://127.0.0.1:1234/reference.h
 assert_eq "CAPTURE: ok 4" "$out" "page base captures"
 assert_contains "$(cat "$tmp/pg/pw-args.log")" "--color-scheme=light http://127.0.0.1:1234/reference.html $tmp/shots p/home-desktop-light.png" "route / uses the base URL as-is"
 assert_not_contains "$(cat "$tmp/pg/pw-args.log")" "reference.html/" "no trailing slash on the page URL"
+# HTTP status is checked per route before any screenshot: a non-2xx page is could-not-run.
+mkdir -p "$tmp/st"; cp "$tmp/pw-ok.sh" "$tmp/st/"; printf '/\n/missing\n' > "$tmp/st-routes.txt"
+out=$(CAPTURE_PW="$tmp/st/pw-ok.sh" bash "$CP" http://127.0.0.1:1234 "$tmp/st-routes.txt" "$tmp/shots s"); code=$?
+assert_eq 3 "$code" "404 route exits 3"
+assert_eq "CAPTURE: could-not-run (HTTP 404 at http://127.0.0.1:1234/missing)" "$out" "404 is could-not-run with code and URL"
+assert_contains "$(cat "$tmp/curl-urls.log")" "http://127.0.0.1:1234/missing" "curl asked for the route URL"
+out=$(CAPTURE_PW="$tmp/st/pw-ok.sh" bash "$CP" http://127.0.0.1:1234/missing.html "$tmp/root.txt" "$tmp/shots s2"); code=$?
+assert_eq 3 "$code" "404 page base (route: reference) exits 3"
+assert_not_contains "$(ls "$tmp/shots s2")" ".png" "no screenshot of an error page"
 finish

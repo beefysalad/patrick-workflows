@@ -8,6 +8,9 @@
 # CAPTURE_PW_CHANNEL (default "chrome") is passed as --channel to the Playwright screenshot
 # command, so it drives the installed Chrome instead of its bundled headless shell (which can
 # be missing); set it to the empty string to omit the flag.
+# Before any screenshot, every route's URL is fetched with curl (CAPTURE_CURL overrides the
+# command, default "curl"; it must print the HTTP status code): a non-2xx answer, such as a 404
+# or 500 page, is "CAPTURE: could-not-run (HTTP <code> at <url>)", never a screenshot.
 # Prints "CAPTURE: ok <n>[ (fallback: light only)]" or "CAPTURE: could-not-run <reason>". Exit 0 or 3.
 set -u
 base=${1:-}; routes=${2:-}; out=${3:-}
@@ -15,6 +18,7 @@ base=${1:-}; routes=${2:-}; out=${3:-}
 mkdir -p "$out" || { echo "CAPTURE: could-not-run (cannot create $out)"; exit 3; }
 pw=${CAPTURE_PW:-npx --yes playwright}
 pw_channel=${CAPTURE_PW_CHANNEL-chrome}
+curl_cmd=${CAPTURE_CURL:-curl}
 chrome=${CHROME_BIN:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}
 base=${base%/}
 log="$out/capture.log"
@@ -28,10 +32,24 @@ shot_pw() {
 }
 shot_chrome() { "$chrome" --headless=new --disable-gpu --hide-scrollbars --window-size="$1" --screenshot="$3" "$2" >> "$log" 2>&1; }
 
+route_url() { if [ "$1" = / ]; then printf '%s' "$base"; else printf '%s' "$base/${1#/}"; fi; }   # "/" is the base itself (a page URL for a route: reference)
+clean() { r=${1%%#*}; printf '%s' "$r" | tr -d '[:space:]'; }
+
+# HTTP status of every route first, so an error page is never captured.
+while IFS= read -r r || [ -n "$r" ]; do
+  r=$(clean "$r"); [ -n "$r" ] || continue
+  url=$(route_url "$r")
+  code=$($curl_cmd -s -o /dev/null -w '%{http_code}' -L --max-time 10 "$url" 2>/dev/null)
+  case $code in
+    2[0-9][0-9]) ;;
+    *) echo "CAPTURE: could-not-run (HTTP ${code:-none} at $url)"; exit 3 ;;
+  esac
+done < "$routes"
+
 mode=playwright; n=0; failed=0
 while IFS= read -r r || [ -n "$r" ]; do
-  r=${r%%#*}; r=$(printf '%s' "$r" | tr -d '[:space:]'); [ -n "$r" ] || continue
-  if [ "$r" = / ]; then url=$base; else url="$base/${r#/}"; fi   # "/" is the base itself (a page URL for a route: reference)
+  r=$(clean "$r"); [ -n "$r" ] || continue
+  url=$(route_url "$r")
   s=$(slug "$r")
   for v in "desktop 1440,900" "phone 390,844"; do
     dev=${v%% *}; size=${v#* }
