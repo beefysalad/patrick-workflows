@@ -7,7 +7,10 @@
 # headless (CHROME_BIN, default the macOS app), which captures light mode only.
 # CAPTURE_PW_CHANNEL (default "chrome") is passed as --channel to the Playwright screenshot
 # command, so it drives the installed Chrome instead of its bundled headless shell (which can
-# be missing); set it to the empty string to omit the flag.
+# be missing); set it to the empty string to omit the flag. CAPTURE_PW is split on spaces into a command
+# and its arguments, so it cannot contain a path with spaces.
+# Old *.png files in <out-dir> are removed first; two routes that map to the same file name
+# ("/a/b" and "/a-b") are could-not-run.
 # Before any screenshot, every route's URL is fetched with curl (CAPTURE_CURL overrides the
 # command, default "curl"; it must print the HTTP status code): a non-2xx answer, such as a 404
 # or 500 page, is "CAPTURE: could-not-run (HTTP <code> at <url>)", never a screenshot.
@@ -34,6 +37,16 @@ shot_chrome() { "$chrome" --headless=new --disable-gpu --hide-scrollbars --windo
 
 route_url() { if [ "$1" = / ]; then printf '%s' "$base"; else printf '%s' "$base/${1#/}"; fi; }   # "/" is the base itself (a page URL for a route: reference)
 clean() { r=${1%%#*}; printf '%s' "$r" | tr -d '[:space:]'; }
+
+# Two routes that slug to the same name would overwrite each other's images.
+seen=" "
+while IFS= read -r r || [ -n "$r" ]; do
+  r=$(clean "$r"); [ -n "$r" ] || continue
+  s=$(slug "$r")
+  case $seen in *" $s "*) echo "CAPTURE: could-not-run (routes give the same file name: $s)"; exit 3 ;; esac
+  seen="$seen$s "
+done < "$routes"
+rm -f "$out"/*.png   # a stale image from an earlier run must never be scored
 
 # HTTP status of every route first, so an error page is never captured.
 while IFS= read -r r || [ -n "$r" ]; do

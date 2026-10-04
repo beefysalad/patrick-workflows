@@ -63,4 +63,12 @@ assert_contains "$(cat "$tmp/curl-urls.log")" "http://127.0.0.1:1234/missing" "c
 out=$(CAPTURE_PW="$tmp/st/pw-ok.sh" bash "$CP" http://127.0.0.1:1234/missing.html "$tmp/root.txt" "$tmp/shots s2"); code=$?
 assert_eq 3 "$code" "404 page base (route: reference) exits 3"
 assert_not_contains "$(ls "$tmp/shots s2")" ".png" "no screenshot of an error page"
+# Cleanup round: stale images are cleared, colliding route names are refused.
+mkdir -p "$tmp/stale"; printf 'OLD' > "$tmp/stale/old-desktop-light.png"; mkdir -p "$tmp/st"; cp "$tmp/pw-ok.sh" "$tmp/st/"
+CAPTURE_PW="$tmp/st/pw-ok.sh" bash "$CP" http://127.0.0.1:1234 "$tmp/root.txt" "$tmp/stale" >/dev/null
+[ -e "$tmp/stale/old-desktop-light.png" ] && _ko "stale png kept" || _ok
+printf '/a/b\n/a-b\n' > "$tmp/clash.txt"; mkdir -p "$tmp/cl"; cp "$tmp/pw-ok.sh" "$tmp/cl/"
+out=$(CAPTURE_PW="$tmp/cl/pw-ok.sh" bash "$CP" http://127.0.0.1:1234 "$tmp/clash.txt" "$tmp/shots cl"); code=$?
+assert_eq 3 "$code" "colliding route names are could-not-run"
+assert_contains "$out" "same file name" "collision reason"
 finish
