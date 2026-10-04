@@ -2,25 +2,39 @@
 # Dev-server lifecycle for UI captures.
 # Usage: dev-server.sh start "<command>" [timeout-seconds]   (the command gets PORT=<port>)
 #        dev-server.sh stop | status
-# Files: <workspace>/dev-server.pid, dev-server.port, logs/dev-server.log
+# Files: <workspace>/dev-server.pid, dev-server.start, dev-server.port, logs/dev-server.log
+# The PID counts as ours only while that process still has the start time recorded at launch, so a
+# recycled PID is never reported up or signalled. Known limits: a server that calls setsid leaves the
+# process group and outlives stop; the free port can be taken between choosing and binding it.
 # Exit: 0 ok, 1 down (status), 3 could-not-run.
 set -u
 ws=${REVIEW_WS:-}
 if [ -z "$ws" ]; then
   ptr=$(git rev-parse --git-path patrick-workflows-review-ws 2>/dev/null) && [ -f "$ptr" ] && ws=$(head -n 1 "$ptr")
+  if [ -z "$ws" ]; then   # a linked worktree: the pointer lives in the main git dir
+    ptr="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/patrick-workflows-review-ws"
+    [ -f "$ptr" ] && ws=$(head -n 1 "$ptr")
+  fi
 fi
 [ -n "$ws" ] || { echo "DEV-SERVER: could-not-run (no workspace)"; exit 3; }
 mkdir -p "$ws/logs"
-pidf="$ws/dev-server.pid"; portf="$ws/dev-server.port"
+pidf="$ws/dev-server.pid"; portf="$ws/dev-server.port"; startf="$ws/dev-server.start"
 
-alive() { [ -f "$pidf" ] && kill -0 "$(cat "$pidf")" 2>/dev/null; }
+started() { ps -o lstart= -p "$1" 2>/dev/null; }
+alive() {
+  [ -f "$pidf" ] && [ -f "$startf" ] || return 1
+  p=$(cat "$pidf"); kill -0 "$p" 2>/dev/null || return 1
+  [ "$(started "$p")" = "$(cat "$startf")" ]
+}
 url() { printf 'http://127.0.0.1:%s' "$(cat "$portf")"; }
 stop_server() {
-  if [ -f "$pidf" ]; then
+  # Signal the group when the leader is ours, or gone (its children may live on; a group id is not
+  # reused while members remain). A live process with another start time is not ours: leave it.
+  if [ -f "$pidf" ] && { alive || ! kill -0 "$(cat "$pidf")" 2>/dev/null; }; then
     pid=$(cat "$pidf")
     kill -TERM -- "-$pid" 2>/dev/null; sleep 0.5; kill -KILL -- "-$pid" 2>/dev/null
   fi
-  rm -f "$pidf" "$portf"
+  rm -f "$pidf" "$portf" "$startf"
 }
 free_port() { perl -MIO::Socket::INET -e '$s = IO::Socket::INET->new(Listen => 1, LocalAddr => "127.0.0.1", LocalPort => 0) or exit 1; print $s->sockport'; }
 
@@ -34,7 +48,7 @@ case ${1:-} in
     trap 'stop_server; exit 3' INT TERM
     exec 3>&2 2>/dev/null   # keep the shell's job notices out of the output
     PORT=$port perl -e 'setpgrp(0, 0); exec @ARGV' bash -c "$cmd" > "$ws/logs/dev-server.log" 2>&1 3>&- &
-    echo $! > "$pidf"; echo "$port" > "$portf"
+    echo $! > "$pidf"; echo "$port" > "$portf"; started $! > "$startf"
     exec 2>&3 3>&-
     ticks=0
     while [ "$ticks" -lt $((limit * 5)) ]; do

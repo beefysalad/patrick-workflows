@@ -46,4 +46,12 @@ wait $bg_pid
 pgrep -f "sleep 45" >/dev/null && _ko "server process still running after SIGTERM" || _ok
 [ -f "$REVIEW_WS/dev-server.pid" ] && _ko "pid file still exists after SIGTERM" || _ok
 
+# A recycled PID (a stale file pointing at someone else's process) is never "up" and never signalled.
+bash "$DS" stop >/dev/null 2>&1
+sleep 30 & other=$!
+mkdir -p "$REVIEW_WS"; echo "$other" > "$REVIEW_WS/dev-server.pid"; echo 1 > "$REVIEW_WS/dev-server.port"
+out=$(bash "$DS" status); assert_eq "1:DEV-SERVER: down" "$?:$out" "foreign PID is not our server"
+bash "$DS" stop >/dev/null 2>&1
+kill -0 "$other" 2>/dev/null && _ok || _ko "stop killed an unrelated process"
+kill "$other" 2>/dev/null
 finish
