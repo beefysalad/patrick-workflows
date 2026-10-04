@@ -40,7 +40,7 @@ Each sub-project gets its own plan, is implemented with subagent-driven developm
 
 ### A2. CLOSE (implements base spec section 12a)
 - New stage skill `ticket-close`; router sends phase `pr` to it.
-- `gh pr view <url> --json state,mergedAt`: not merged → report state, change nothing. Merged → set the ticket Done with the machine's tracker tool (GitHub: `gh issue close <n>` with a comment; other trackers: an MCP tool if available; otherwise print the one manual step), `git switch <base_branch>` + `git pull --ff-only` when clean, delete the merged local branch, remove the worktree via `ExitWorktree`/`git worktree remove` when one was used, `S phase closed`.
+- `gh pr view <url> --json state,mergedAt`: not merged → report state, change nothing. Merged → set the ticket Done with the machine's tracker tool (GitHub: `gh issue close <issue_url>` with a comment, by the URL stored at intake, never by bare number; other trackers: an MCP tool if available; otherwise print the one manual step), `git switch <base_branch>` + `git pull --ff-only` when clean, delete the merged local branch (`-D` only when its tip equals the PR's `headRefOid`), remove the worktree via `ExitWorktree`/`git worktree remove` when one was used, `S phase closed`.
 
 ### A3. Deferred minors folded in
 1. `branch-name.sh` refuses IDs that slug to nothing; PLAN validates user-renamed branches with `git check-ref-format --branch`.

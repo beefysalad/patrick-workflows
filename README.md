@@ -43,7 +43,7 @@ only reaches other machines after `version` is bumped in
 - **BUILD (on its own):** one fresh implementer and reviewer per task, test first, gates re-run by the orchestrator, then the `/review-mine` loop. Asks nothing.
 - **SHIP (with you):** one report with numbered questions. Ask for changes and it runs a second round; say yes and it scans for secrets, then opens a draft PR.
 
-Run `/ticket <id>` again at any time to resume where it stopped. If another plugin also defines `/ticket` or `/review-mine`, use the namespaced form: `/patrick-workflows:ticket`, `/patrick-workflows:review-mine`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. After the PR is merged, run `/ticket <id>` once more: it marks the ticket done and cleans up.
+Run `/ticket <id>` again at any time to resume where it stopped. If another plugin also defines `/ticket` or `/review-mine`, use the namespaced form: `/patrick-workflows:ticket`, `/patrick-workflows:review-mine`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. After the PR is merged, run `/ticket <id>` once more: it marks the ticket done (a GitHub issue is closed by the URL recorded at intake, never by bare number) and cleans up. After a squash or rebase merge it deletes the local branch with `-D` only when the branch tip is exactly the commit GitHub merged; otherwise it keeps the branch and says why.
 
 Optional: list company names and internal hostnames, one per line, in your work project's `.claude/patrick-workflows-deny.txt`. SHIP refuses to open a PR whose body or diff contains them.
 
@@ -67,7 +67,7 @@ Working files go to `~/.patrick-workflows/tickets/<repo>/_reviews/` (override wi
 - `Bash(bash *skills/review-mine/scripts/*)`
 - your project's gate commands, for example `Bash(npm test*)`, `Bash(npm run lint*)`
 - optional: `Bash(gh pr view*)`, so the bar can be built from your PR description
-- for `/ticket` CLOSE: `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue close*)`
+- for `/ticket` CLOSE: `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue view*)`, `Bash(gh issue close*)`
 
 **Exit pair safety.** `--reset` runs only when the database in `--env-file` matches `--db-pattern` and its host is local. Anything else is refused before a reset runs.
 

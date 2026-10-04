@@ -27,7 +27,7 @@ handoff.md      the SHIP report; pr-body.md the draft PR body
 ```
 
 ## State keys
-`ticket`, `title`, `phase`, `branch`, `base` (sha), `base_branch`, `checkout` (`main` or the worktree path), `depth` (`lite`|`standard`), `tasks_total`, `tasks_done`, `round2` (`no`|`yes`), `budget_impl_max`, `budget_impl_used`, `budget_review_max`, `gate.<name>` (command), `gate_timeout`, `exit_pair` (`none` or the exit-pair flags), `pr_target`, `pr_url`, `preflight` (`done`), `type` (`feat`|`fix`), `graded` (path to `graded.md`).
+`ticket`, `title`, `phase`, `branch`, `base` (sha), `base_branch`, `checkout` (`main` or the worktree path), `depth` (`lite`|`standard`), `tasks_total`, `tasks_done`, `round2` (`no`|`yes`), `budget_impl_max`, `budget_impl_used`, `budget_review_max`, `gate.<name>` (command), `gate_timeout`, `exit_pair` (`none` or the exit-pair flags), `pr_target`, `pr_url`, `preflight` (`done`), `type` (`feat`|`fix`), `graded` (path to `graded.md`), `issue_url` (GitHub issue URL, set at intake; CLOSE closes the issue by it).
 
 ## Phases
 `bash state.sh <WS>/state.md phase <new>` is the only way to change phase; it refuses illegal jumps and logs every change.
@@ -63,4 +63,5 @@ Ledger line: `<UTC time> <step> <result>`. Ledger time: always `date -u +%Y-%m-%
 | `ticket-ws.sh path/init/list` | workspace location |
 | `branch-name.sh <type> <id> <title...>` | branch name |
 | `pr-state.sh <pr>` | merged / open / closed-unmerged / could-not-run |
+| `pr-state.sh --head-matches <pr> <branch>` | same / differs / could-not-run: local branch tip vs the PR head |
 | `secret-scan.sh [--deny-file f] <file or ->...` | secrets before a PR |

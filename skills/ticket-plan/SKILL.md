@@ -12,7 +12,7 @@ Read `patrick-workflows:ticket-workspace` first. `S` = `bash "$SKILL_DIR/../tick
 - `WS=$(bash "$SKILL_DIR/../ticket-workspace/scripts/ticket-ws.sh" path <id>)`. If it exists, resume at the first missing step below according to `phase`. Otherwise `bash ".../ticket-ws.sh" init <id>`, then `S set ticket <id>` and `S phase intake`.
 
 ## 2. Intake
-Read the ticket with whatever the machine offers: `gh issue view <n> --json title,body,comments` for GitHub; a tracker MCP tool if one is available; otherwise ask the user to paste it. Save it verbatim to `WS/ticket.md`; `S set title "<title>"`.
+Read the ticket with whatever the machine offers: `gh issue view <url or n> --json title,body,comments,url` for GitHub (a GitHub issue URL from step 1 is passed as the URL, never as the bare number, since the issue may live in another repo); a tracker MCP tool if one is available; otherwise ask the user to paste it. Save it verbatim to `WS/ticket.md`; `S set title "<title>"`. When the ticket is a GitHub issue (a GitHub issue URL was given, or `gh issue view` succeeded), `S set issue_url <the issue's url>` (the `url` field `gh` returned); CLOSE closes the issue by this URL only.
 
 ## 3. Acceptance criteria
 Extract them into `WS/bar.md` as `AC1`, `AC2`, ... followed by a `Deferred:` line. None in the ticket → write them with the user now. The run does not start without them.
@@ -44,7 +44,7 @@ Settle each item, then show the whole brief once for approval.
    - `Bash(bash *skills/*/scripts/*)`
    - each gate command, e.g. `Bash(npm test*)`
    - `Bash(git add*)`, `Bash(git commit*)`, `Bash(git diff*)`, `Bash(git log*)`, `Bash(git status*)`, `Bash(git switch*)`, `Bash(git rev-parse*)`
-   - for `/ticket` CLOSE (used after the merge): `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue close*)`
+   - for `/ticket` CLOSE (used after the merge): `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue view*)`, `Bash(gh issue close*)`
 7. **Rulings:** record every decision made in this stage in `WS/rulings.md` with `source: user`.
 
 Ask for one approval of the brief. On approval:
