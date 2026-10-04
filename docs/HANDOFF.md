@@ -42,5 +42,8 @@ Open work: rerun `tests/SMOKE-graded.md` after the fixes, then tag `v0.4.0` (ask
 - README: rubric shown like an inline key; dev-command allow rule not mentioned.
 - Fixture: `SMOKE-graded.md` must run from the repo root and fails if the folder exists.
 
+## Sub-project B status (2026-10-04)
+Built in fast mode (user's choice): Task 1 by a subagent, Tasks 2-3 inline, all test-first. Commits `v0.4.0..HEAD` (local, not pushed). Smoke (`tests/SMOKE-guard.md`) passed after one fix (attribution split across shell quotes). Final Opus review was dispatched; its findings land in `.superpowers/sdd/2026-10-04-guard-hooks/final-review.md` (local). Remaining: fix Critical/Important findings test-first, tag `v0.5.0`, ask the user before pushing.
+
 ## After A
 Sub-projects B (guardrail hooks), C (full review depth + challenger) and D (parallel tasks) each need a plan from the completion spec, then subagent-driven development with TDD, a final review, and a release. Each starts with the spike listed in the spec.
