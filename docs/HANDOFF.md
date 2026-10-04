@@ -32,15 +32,12 @@ Open work: rerun `tests/SMOKE-graded.md` after the fixes, then tag `v0.4.0` (ask
 - CLOSE permission rules (`git worktree`, `git branch`, `git pull`, `gh pr view`, `gh issue close`) were added to README and the PLAN brief.
 - Re-graded to Important and fixed: graded-ab malformed scores (could false-pass), capture failure handling, verdict exit 2 handling, CLOSE ledger time format.
 
-## Deferred minors (for the final review to triage)
-- dev-server: `alive()` trusts `kill -0` (recycled PID); a signal between launch and PID write can orphan a server; servers that `setsid` escape the group kill; free-port race.
-- capture: `CAPTURE_PW` word-splitting undocumented; a stale PNG in a reused folder could pass; route slug collisions (`/a/b` vs `/a-b`).
-- graded-ab: option flags without a value exit 1 instead of 2; `rm -rf "$out"` trusts the caller; trailing whitespace/CRLF score lines rejected (fails closed).
-- pr-state: unexpected-output and empty-argument paths untested.
-- review-mine 4b: capture URL not tied to the `DEV-SERVER: up` line; retry/budget edge cases not spelled out.
-- ticket-close: old workspaces have no `type` key.
-- README: rubric shown like an inline key; dev-command allow rule not mentioned.
-- Fixture: `SMOKE-graded.md` must run from the repo root and fails if the folder exists.
+## Deferred minors
+Cleanup round (v0.7.1, 2026-10-04) settled them. Left as accepted limits:
+- dev-server: a server that calls `setsid` escapes the group kill; the free port can be taken between choosing and binding it (documented in the script).
+- guard: a `-F <file>` of another command on the same line is read as a message file; messages built at runtime are not seen (README).
+- spec C budget arithmetic (16) has one dispatch of slack; harmless.
+- A's process note about batch-written smoke ledger lines (no code change).
 
 ## Sub-project B status (2026-10-04)
 Done and tagged `v0.5.0`: guard hook (attribution always; push approval and base-branch commits during a ticket). Final Opus review: 1 Important (false blocks from quoted text/heredocs), fixed test-first. Deferred minors: ticket lookup ignores `cd X`/`git -C X`; missed forms (`git --no-pager push`, `env X=1 git push`, quoted `-C` paths); a message that only mentions the trailer is blocked; `-F` scan also reads `grep -F` args; an extra perl call before the fast exit.
