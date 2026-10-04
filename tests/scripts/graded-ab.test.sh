@@ -88,4 +88,18 @@ assert_contains "$out" "GRADED: tie on every criterion (scorer 1)" "tie flagged"
 out=$(bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/s1.txt")
 assert_not_contains "$out" "tie" "no tie flag when scores differ"
 
+# Cleanup round.
+bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/s1.txt" --margin 2>/dev/null; assert_eq 2 $? "flag without a value is bad input"
+printf 'A Layout fidelity: 4.5\r\nA Responsiveness: 4  \r\nB Layout fidelity: 4.2\r\nB Responsiveness: 4\r\n' > "$tmp/crlf.txt"
+bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/crlf.txt" >/dev/null 2>&1; assert_eq 0 $? "CRLF and trailing spaces accepted"
+printf 'A x: 5\nA x: 5\nB x: 5\nB y: 5\n' > "$tmp/dup.txt"
+bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/dup.txt" >/dev/null 2>&1; assert_eq 2 $? "duplicate criterion is bad input"
+printf 'A x: 5\nA y: 5\nB x: 5\nB z: 5\n' > "$tmp/mism.txt"
+bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/mism.txt" >/dev/null 2>&1; assert_eq 2 $? "criteria differ between sides is bad input"
+GRADED_AB_FORCE=A bash "$GA" prepare "$tmp/ref" "$tmp/ours" "$tmp/blind/r1x" "$tmp/maps/r1.mapping"; assert_eq 0 $? "prepare with a separate mapping path"
+assert_eq "ours=A" "$(cat "$tmp/maps/r1.mapping")" "mapping written where asked"
+[ -e "$tmp/blind/r1x.mapping" ] && _ko "default mapping also written" || _ok
+mkdir -p "$tmp/precious"; echo keep > "$tmp/precious/notes.md"
+bash "$GA" prepare "$tmp/ref" "$tmp/ours" "$tmp/precious" 2>/dev/null; assert_eq 2 $? "refuses to empty a folder with other files"
+assert_file "$tmp/precious/notes.md" "other files kept"
 finish
