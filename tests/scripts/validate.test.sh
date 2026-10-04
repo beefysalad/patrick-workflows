@@ -31,6 +31,9 @@ out=$(check); assert_contains "$out" "missing script ../ticket-workspace/scripts
 fresh; sed -i.bak 's/^tools: Read, Glob$/tools: Read, Glob, Write/' "$tmp/repo/agents/ui-scorer.md"; rm -f "$tmp/repo/agents/"*.bak
 out=$(check); assert_contains "$out" "read-only agent has write tools: agents/ui-scorer.md" "ui-scorer is read-only"
 
+fresh; sed -i.bak 's/^tools: Read, Grep, Glob$/tools: Read, Grep, Glob, Edit/' "$tmp/repo/agents/finding-challenger.md"; rm -f "$tmp/repo/agents/"*.bak
+out=$(check); assert_contains "$out" "read-only agent has write tools: agents/finding-challenger.md" "finding-challenger is read-only"
+
 fresh; mkdir -p "$tmp/repo/skills/hello-dup"; printf -- '---\nname: hello-dup\ndescription: dup\n---\nx\n' > "$tmp/repo/skills/hello-dup/SKILL.md"; printf -- '---\ndescription: dup\n---\nx\n' > "$tmp/repo/commands/hello-dup.md"
 out=$(check); assert_contains "$out" "command shadows skill: hello-dup" "a command may not share a skill name"
 finish

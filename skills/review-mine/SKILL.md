@@ -18,7 +18,7 @@ A builder/critic review loop on gauntlet principles: the builder never grades it
 
 ## 1. Parse arguments
 - `base`: first positional argument; default `git merge-base HEAD origin/<default>` where `<default>` comes from `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback: the local `main` branch, then local `master`, when there is no `origin`).
-- `--depth`: `lite` or `standard`. Default: `lite` if the diff has at most 3 files and 150 changed lines and no path contains auth, security, crypto, payment, billing, session, token, password or permission; otherwise `standard`.
+- `--depth`: `lite`, `standard` or `full`. `full` is used only when asked for (or set by `/ticket`'s brief). Default: `lite` if the diff has at most 3 files and 150 changed lines and no path contains auth, security, crypto, payment, billing, session, token, password or permission; otherwise `standard`.
 - `--criteria <file>`: acceptance criteria. Without it, build the bar from the PR description (`gh pr view --json title,body` if it works) and the branch's commit messages, and mark it `inferred` in `bar.md`.
 - `--scope <file>`: scope file for `scope-check.sh`. Optional.
 - `--no-fix`: run round 1 only and report.
@@ -48,10 +48,10 @@ min: 3
 branch: <current branch>
 base: <base sha>
 head_start: <HEAD sha>
-depth: lite | standard
+depth: lite | standard | full
 round: 0
-rounds_max: 2 | 4
-budget_max: 3 | 10
+rounds_max: 2 | 4 | 4
+budget_max: 3 | 10 | 16
 budget_used: 0
 protected_slot: unused
 restore_branch: <current branch>
@@ -68,21 +68,23 @@ status: running
 2. Dispatch critics **in one message, in parallel**, as `patrick-workflows:final-reviewer` with these models:
    - lite: one `combined` critic, model **opus**, `VERDICT_REQUIRED: yes`.
    - standard: `impact` (**opus**), `security+regression` (**opus**), `requirements+maintainability` (**sonnet**, `VERDICT_REQUIRED: yes`).
+   - full: `impact` (**opus**), `security` (**opus**), `regression` (**sonnet**), `requirements` (**sonnet**, `VERDICT_REQUIRED: yes`), `maintainability` (**sonnet**).
    Dispatch text: `MODE: review`, `CONCERN`, `PACKAGE`, `BAR` (`bar.md`), `GATES` (`gates.md`), `VERDICT_REQUIRED`. Each dispatch adds 1 to `budget_used`.
 3. Save each critic's output to `review/round-1/<concern>.md`. Output that does not follow the format gets one re-dispatch (counts against the budget, never against the protected slot); malformed again → stop condition "every path is a guess".
 4. **Evidence filter:** drop any finding missing Location, Trigger, Expected or Actual. Count drops.
 5. Assign IDs `F1-1, F1-2, ...`. Fingerprint = `<file>:<line rounded down to 10>:<first 8 chars of shasum of the trigger>`; duplicates keep the highest severity. Write `review/round-1/findings.md`.
+5b. **Challenger** (full only, round 1 only): write `review/round-1/challenge-in.md` with every open Critical and Important finding (ID, severity, location, trigger, expected, actual) and dispatch `patrick-workflows:finding-challenger` (model **opus**, +1 budget) with `FINDINGS` (that file), `PACKAGE`, `BAR`. Save its output to `review/round-1/challenge.md`. Output that does not have exactly one `<ID>: STANDS` or `<ID>: REFUTED <path:line> — <reason>` line per finding gets one re-dispatch; malformed again → every finding stands, noted in the report. A REFUTED finding is closed: move it to `review/round-1/refuted.md` with the challenger's reason. It never reaches the fixer. A finding the challenger leaves STANDS keeps its severity.
 6. **Severity changes:** you may raise any severity. You may never lower a Critical. Lowering an Important to Minor requires a ruling in `rulings.md` (`R<n> — <title> / Decision / Why / Cost if wrong`), and it is listed under "Severity downgrades" in the report.
-7. Correctness verdict = the `requirements+maintainability` (or `combined`) critic's VERDICT.
+7. Correctness verdict = the `requirements+maintainability` (`requirements` at full, `combined` at lite) critic's VERDICT. At full, a FAIL whose VERDICT-REASON names only refuted findings counts as PASS, with a ruling in `rulings.md`.
 7b. With `--graded`: run section 4b now, before step 8. Its gaps join the open findings.
 8. If VERDICT is PASS, no Critical or Important finding is open, and the graded bar does not keep the loop going (see 4b, "Graded status") → go to section 5. If `--no-fix` → go to section 6.
 
 ## 4. Fix rounds (round N = 2, 3, ...)
 0. At the start of each fix round, increment `round` in `state.md` (round 1 is the first review).
-1. Stop if `round >= rounds_max`, or if only the protected slot remains in the budget and you still need a fixer (standard).
+1. Stop if `round >= rounds_max`, or if only the protected slot remains in the budget and you still need a fixer (standard and full).
 2. Record the pre-fix commit (`git rev-parse HEAD`) in `state.md` as `pre_fix`.
 3. Open Critical and Important findings go to the fix round; Minors are deferred.
-   - standard: dispatch `patrick-workflows:ticket-fixer` (model sonnet, +1 budget) with `FINDINGS` (the open findings file), `GATES` (one `bash "$SKILL_DIR/scripts/run-gate.sh" fix<N>-<name> 900 -- "<command>"` line per gate), `SCOPE` (if given), `REPORT` (`review/round-<N>/fix-report.md`).
+   - standard and full: dispatch `patrick-workflows:ticket-fixer` (model sonnet, +1 budget) with `FINDINGS` (the open findings file), `GATES` (one `bash "$SKILL_DIR/scripts/run-gate.sh" fix<N>-<name> 900 -- "<command>"` line per gate), `SCOPE` (if given), `REPORT` (`review/round-<N>/fix-report.md`).
    - Visual findings (Kind: visual, from 4b) go in the same `FINDINGS` file. When any is open, also pass `RECAPTURE` and `REFERENCE_IMAGES` (`<WS>/graded/reference`). `RECAPTURE` is these three lines with `<dev>` and `<routes>` from `graded.md` filled in and `<N>` set:
      ```
      bash "$SKILL_DIR/scripts/dev-server.sh" start "<dev>" 120
@@ -96,7 +98,7 @@ status: running
 7. **Evidence outranks opinion:** a behavioral finding whose red test now passes stays addressed unless the critic gave a NEW-TRIGGER; a NEW-TRIGGER becomes a new finding (round-N ID).
 8. New findings go through the evidence filter and get IDs `F<N>-<n>`.
 8b. With `--graded`: run section 4b for this round now, before steps 9 and 10. Its gaps join the open findings.
-9. **Progress** (standard only): progress = the count of open Critical + Important findings fell by at least 1. Two consecutive rounds without progress → stop the loop (plateau).
+9. **Progress** (standard and full): progress = the count of open Critical + Important findings fell by at least 1. Two consecutive rounds without progress → stop the loop (plateau).
 10. Exit the loop when VERDICT is PASS, no Critical or Important is open, and the graded bar does not keep the loop going (see 4b, "Graded status"); otherwise next round. A graded bar that is `could-not-run` never keeps the loop going.
 
 ## 4b. Graded bar (only with `--graded`)
@@ -146,6 +148,7 @@ The result line is also appended to `<WS>/exit-pair.txt`; cite it in the report.
    1. Outcome line: `READY` or `BLOCKED: <reason>`, depth, rounds used, dispatches used / budget.
    2. Needs your decision: numbered questions, each with a recommendation (deferred Importants, out-of-scope rulings).
    3. Unreproduced findings, security first.
+   3b. Refuted by the challenger (full only): each refuted finding with its severity, the challenger's `path:line` and reason, Criticals first, and "Reply to overrule" so the user can reopen it.
    4. Severity downgrades.
    5. Bars: correctness verdict per round; exit pair result and runs; with `--graded`, the graded line from 4b.9.
    6. Findings per round: raised, dropped for missing evidence, fixed (with red test names), deferred.
