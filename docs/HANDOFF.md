@@ -45,5 +45,8 @@ Open work: rerun `tests/SMOKE-graded.md` after the fixes, then tag `v0.4.0` (ask
 ## Sub-project B status (2026-10-04)
 Done and tagged `v0.5.0`: guard hook (attribution always; push approval and base-branch commits during a ticket). Final Opus review: 1 Important (false blocks from quoted text/heredocs), fixed test-first. Deferred minors: ticket lookup ignores `cd X`/`git -C X`; missed forms (`git --no-pager push`, `env X=1 git push`, quoted `-C` paths); a message that only mentions the trailer is blocked; `-F` scan also reads `grep -F` args; an extra perl call before the fast exit.
 
+## Sub-project C status (2026-10-04)
+Done and tagged `v0.6.0` (local until the user approves the push): `--depth full` (5 critics + `finding-challenger`, budget 16, 4 rounds); SHIP shows refuted findings with a reopen question. No end-to-end run of depth full yet (usage). Deferred minors: budget slack in the 16 math; "reply to overrule" undefined for standalone /review-mine.
+
 ## After A
 Sub-projects B (guardrail hooks), C (full review depth + challenger) and D (parallel tasks) each need a plan from the completion spec, then subagent-driven development with TDD, a final review, and a release. Each starts with the spike listed in the spec.
