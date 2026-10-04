@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # Blind A/B setup and pass/fail verdict for the graded (UI) bar.
 # Usage: graded-ab.sh prepare <reference-dir> <ours-dir> <out-dir>
-#          Copies the two image sets into <out-dir>/A and <out-dir>/B in random order and records which
+#          Copies the two image sets (top-level png/jpg/jpeg/webp only) into <out-dir>/A and <out-dir>/B in random order and records which
 #          one is ours in <out-dir>.mapping, outside the folder the scorer reads.
 #        graded-ab.sh verdict <mapping-file> <scores-file>... [--margin M] [--floor F] [--min N]
 #          Scores files hold "A <criterion>: <score>" and "B <criterion>: <score>" lines.
 #          Every scores file must pass (the second one is the confirming scorer).
 # Exit: 0 pass / ok, 1 fail, 2 bad input.
 set -u
+# Copy only the top-level images: anything else (capture.log names the URL) could unblind the scorer.
+copy_images() {
+  n=0
+  for f in "$1"/*.png "$1"/*.jpg "$1"/*.jpeg "$1"/*.webp; do
+    [ -f "$f" ] || continue
+    cp "$f" "$2/" || return 2
+    n=$((n + 1))
+  done
+  [ "$n" -gt 0 ]
+}
 cmd=${1:-}; [ $# -gt 0 ] && shift
 case $cmd in
   prepare)
@@ -21,7 +31,7 @@ case $cmd in
     if [ -z "$side" ]; then if [ $((RANDOM % 2)) -eq 0 ]; then side=A; else side=B; fi; fi
     other=B; [ "$side" = B ] && other=A
     rm -rf "$out" && mkdir -p "$out/A" "$out/B" || exit 2
-    cp -R "$ours/." "$out/$side/" && cp -R "$ref/." "$out/$other/" || exit 2
+    copy_images "$ours" "$out/$side" && copy_images "$ref" "$out/$other" || { echo "no images in $ours or $ref" >&2; exit 2; }
     printf 'ours=%s\n' "$side" > "$out.mapping" ;;
   verdict)
     map=${1:-}; [ $# -gt 0 ] && shift

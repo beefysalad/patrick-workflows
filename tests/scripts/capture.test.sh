@@ -41,4 +41,10 @@ out=$(CAPTURE_PW="$tmp/pw-bad.sh" CHROME_BIN="$tmp/chrome-bad.sh" bash "$CP" htt
 assert_eq 3 "$code" "nothing works is could-not-run"
 assert_contains "$out" "CAPTURE: could-not-run" "reason"
 out=$(bash "$CP" http://x "$tmp/missing.txt" "$tmp/d"); assert_eq 3 $? "missing routes file"
+# A page base (route: reference) with route "/" must not gain a trailing slash.
+mkdir -p "$tmp/pg"; cp "$tmp/pw-ok.sh" "$tmp/pg/"; printf '/\n' > "$tmp/root.txt"
+out=$(CAPTURE_PW="$tmp/pg/pw-ok.sh" bash "$CP" http://127.0.0.1:1234/reference.html "$tmp/root.txt" "$tmp/shots p")
+assert_eq "CAPTURE: ok 4" "$out" "page base captures"
+assert_contains "$(cat "$tmp/pg/pw-args.log")" "--color-scheme=light http://127.0.0.1:1234/reference.html $tmp/shots p/home-desktop-light.png" "route / uses the base URL as-is"
+assert_not_contains "$(cat "$tmp/pg/pw-args.log")" "reference.html/" "no trailing slash on the page URL"
 finish

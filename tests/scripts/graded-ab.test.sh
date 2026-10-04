@@ -10,6 +10,14 @@ assert_eq o "$(cat "$tmp/ab dir/B/home.png")" "ours in B when forced"
 assert_eq r "$(cat "$tmp/ab dir/A/home.png")" "reference in A"
 assert_eq "ours=B" "$(cat "$tmp/ab dir.mapping")" "mapping recorded"
 [ -e "$tmp/ab dir/mapping" ] || [ -e "$tmp/ab dir/.mapping" ] && _ko "mapping visible to the scorer" || _ok
+# Only images reach the scorer: a capture log names the URL and would unblind it.
+mkdir -p "$tmp/ref2/sub" "$tmp/ours2"; echo r > "$tmp/ref2/home.png"; echo o > "$tmp/ours2/home.png"
+echo "http://x/reference.html" > "$tmp/ref2/capture.log"; echo "http://x/" > "$tmp/ours2/capture.log"; echo n > "$tmp/ref2/sub/x.png"
+GRADED_AB_FORCE=A bash "$GA" prepare "$tmp/ref2" "$tmp/ours2" "$tmp/ab2"; assert_eq 0 $? "prepare with logs exits 0"
+assert_file "$tmp/ab2/A/home.png" "image copied"
+[ -e "$tmp/ab2/A/capture.log" ] || [ -e "$tmp/ab2/B/capture.log" ] && _ko "capture.log copied into the blind folders" || _ok
+[ -e "$tmp/ab2/B/sub" ] && _ko "subfolder copied into the blind folders" || _ok
+mkdir -p "$tmp/empty"; GRADED_AB_FORCE=A bash "$GA" prepare "$tmp/empty" "$tmp/ours2" "$tmp/ab3" 2>/dev/null; assert_eq 2 $? "a side with no images is bad input"
 
 printf 'A Layout fidelity: 4.5\nA Responsiveness: 4\nB Layout fidelity: 4.2\nB Responsiveness: 4\nGAP B Responsiveness: wraps\n' > "$tmp/s1.txt"
 out=$(bash "$GA" verdict "$tmp/ab dir.mapping" "$tmp/s1.txt"); code=$?

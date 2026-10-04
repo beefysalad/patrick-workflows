@@ -31,7 +31,8 @@ shot_chrome() { "$chrome" --headless=new --disable-gpu --hide-scrollbars --windo
 mode=playwright; n=0; failed=0
 while IFS= read -r r || [ -n "$r" ]; do
   r=${r%%#*}; r=$(printf '%s' "$r" | tr -d '[:space:]'); [ -n "$r" ] || continue
-  url="$base/${r#/}"; s=$(slug "$r")
+  if [ "$r" = / ]; then url=$base; else url="$base/${r#/}"; fi   # "/" is the base itself (a page URL for a route: reference)
+  s=$(slug "$r")
   for v in "desktop 1440,900" "phone 390,844"; do
     dev=${v%% *}; size=${v#* }
     for scheme in light dark; do
