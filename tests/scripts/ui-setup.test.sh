@@ -2,7 +2,7 @@
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/tests/lib/assert.sh"
 tmp="$(mktemp -d)"; export REVIEW_WS="$tmp/ws"
-DS="$ROOT/skills/review-mine/scripts/dev-server.sh"
+DS="$ROOT/skills/gauntlet-review/scripts/dev-server.sh"
 trap 'bash "$DS" stop >/dev/null 2>&1; rm -rf "$tmp"' EXIT
 bash "$ROOT/tests/fixture/ui-setup.sh" "$tmp/ui site" >/dev/null; assert_eq 0 $? "setup exits 0"
 assert_eq "feat/landing" "$(git -C "$tmp/ui site" rev-parse --abbrev-ref HEAD)" "on the feature branch"

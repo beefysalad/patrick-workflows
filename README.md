@@ -40,21 +40,23 @@ only reaches other machines after `version` is bumped in
 ```
 
 - **PLAN (with you):** reads the ticket, settles acceptance criteria, creates the branch (or a worktree, if you ask for one), brainstorms the design, writes the plan, and agrees an autonomy brief: gates, scope, review depth, budget, an optional exit pair, and the permission rules to add.
-- **BUILD (on its own):** one fresh implementer and reviewer per task, test first, gates re-run by the orchestrator, then the `/review-mine` loop. Asks nothing.
+- **BUILD (on its own):** one fresh implementer and reviewer per task, test first, gates re-run by the orchestrator, then the `/gauntlet-review` loop. Asks nothing.
 - **SHIP (with you):** one report with numbered questions. Ask for changes and it runs a second round; say yes and it scans for secrets, then opens a draft PR.
 
-Run `/start <id>` again at any time to resume where it stopped. If another plugin also defines `/start` or `/review-mine`, use the namespaced form: `/patrick-workflows:start`, `/patrick-workflows:review-mine`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. After the PR is merged, run `/start <id>` once more: it marks the ticket done (a GitHub issue is closed by the URL recorded at intake, never by bare number) and cleans up. After a squash or rebase merge it deletes the local branch with `-D` only when the branch tip is exactly the commit GitHub merged; otherwise it keeps the branch and says why.
+Run `/start <id>` again at any time to resume where it stopped. If another plugin also defines `/start` or `/gauntlet-review`, use the namespaced form: `/patrick-workflows:start`, `/patrick-workflows:gauntlet-review`. Working files live in `~/.patrick-workflows/tickets/<repo>/<id>/`. After the PR is merged, run `/start <id>` once more: it marks the ticket done (a GitHub issue is closed by the URL recorded at intake, never by bare number) and cleans up. After a squash or rebase merge it deletes the local branch with `-D` only when the branch tip is exactly the commit GitHub merged; otherwise it keeps the branch and says why.
 
 Optional: list company names and internal hostnames, one per line, in your work project's `.claude/patrick-workflows-deny.txt`. SHIP refuses to open a PR whose body or diff contains them.
 
 Permission rules: absolute paths outside your home directory need a leading `//` (for example `Edit(//opt/data/**)`); paths under your home use `~/`.
 
-## /review-mine
+## /gauntlet-review
+
+Renamed from `/review-mine` in v0.9.0 so it no longer clashes with project-level skills of that name. Update allow rules from `skills/review-mine/scripts/*` to `skills/gauntlet-review/scripts/*`. A ticket started before v0.9.0 keeps its review evidence under `review-mine/` in the ticket workspace; finish it on v0.8.x or start it again.
 
 Reviews the current branch with fresh critics, keeps only findings that come with evidence, fixes Critical and Important ones with a failing test first, re-reviews the fixes with a new critic, and stops at an explicit PASS, a plateau, or the budget. It commits fixes to your branch and never pushes.
 
 ```
-/review-mine [base] [--depth lite|standard|full] [--criteria <file>] [--scope <file>] [--graded <graded.md>]
+/gauntlet-review [base] [--depth lite|standard|full] [--criteria <file>] [--scope <file>] [--graded <graded.md>]
              [--no-fix] [--prove "<cmd>" [--reset "<cmd>" --env-file <file> --db-pattern <regex>]]
 ```
 
@@ -68,7 +70,7 @@ Working files go to `~/.patrick-workflows/tickets/<repo>/_reviews/` (override wi
 
 **Permissions.** To run without prompts, allow these in your settings (confirmed in `docs/superpowers/spikes/2026-10-03-phase-1a.md`):
 - `Read(~/.patrick-workflows/**)` and `Edit(~/.patrick-workflows/**)` (Edit rules cover all file-writing tools; Write rules are not matched)
-- `Bash(bash *skills/review-mine/scripts/*)`
+- `Bash(bash *skills/gauntlet-review/scripts/*)`
 - your project's gate commands, for example `Bash(npm test*)`, `Bash(npm run lint*)`
 - optional: `Bash(gh pr view*)`, so the bar can be built from your PR description
 - for `/start` CLOSE: `Bash(git worktree*)`, `Bash(git branch*)`, `Bash(git pull*)`, `Bash(gh pr view*)`, `Bash(gh issue view*)`, `Bash(gh issue close*)`

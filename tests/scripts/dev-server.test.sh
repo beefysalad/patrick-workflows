@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/tests/lib/assert.sh"
-DS="$ROOT/skills/review-mine/scripts/dev-server.sh"
+DS="$ROOT/skills/gauntlet-review/scripts/dev-server.sh"
 tmp="$(mktemp -d)"; export REVIEW_WS="$tmp/work space"
 trap 'bash "$DS" stop >/dev/null 2>&1; rm -rf "$tmp"' EXIT
 srv="node -e \"require('http').createServer((q,s)=>s.end('ok')).listen(process.env.PORT,'127.0.0.1')\""

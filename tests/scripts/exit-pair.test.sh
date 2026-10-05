@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/tests/lib/assert.sh"
-EP="$ROOT/skills/review-mine/scripts/exit-pair.sh"
+EP="$ROOT/skills/gauntlet-review/scripts/exit-pair.sh"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 export REVIEW_WS="$tmp/ws"
 cd "$tmp" || exit 1

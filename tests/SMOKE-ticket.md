@@ -13,8 +13,8 @@ Expected:
 - [ ] BUILD resumes at `approved`; no questions until the SHIP report.
 - [ ] `baseline.md` lists the known red formatPrice test.
 - [ ] Two tasks, each with a `reports/task-N.md` naming a red test and a green run, and a `task N complete` ledger line.
-- [ ] The orchestrator re-ran gates after each task (`review-mine/logs/task<N>-test.status`).
-- [ ] The review loop ran in `review-mine/`; phase ends `ready` (or `blocked` with a reason matching the files).
+- [ ] The orchestrator re-ran gates after each task (`gauntlet-review/logs/task<N>-test.status`).
+- [ ] The review loop ran in `gauntlet-review/`; phase ends `ready` (or `blocked` with a reason matching the files).
 - [ ] `handoff.md` has numbered questions ending with "Open the draft PR?"; phase `handoff`; nothing pushed (the fixture has no remote).
 - [ ] `ledger.md` shows `approved -> implementing -> reviewing ... -> handoff` with no illegal jump.
 

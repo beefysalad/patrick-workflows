@@ -22,7 +22,7 @@ scope.txt       allow:/forbid: lines for scope-check.sh
 ledger.md       one line per completed step; state.sh appends phase changes
 baseline.md     gate results on the base commit
 briefs/task-N.md, reports/task-N.md
-review-mine/    the review loop's own workspace (state, logs, rounds, report.md)
+gauntlet-review/    the review loop's own workspace (state, logs, rounds, report.md)
 handoff.md      the SHIP report; pr-body.md the draft PR body
 ```
 

@@ -1,9 +1,9 @@
 ---
-name: review-mine
-description: Use when reviewing a branch before a PR, or when /review-mine runs. Runs a builder/critic loop - fresh critics by concern, evidence rule, fix rounds proven by red tests, fresh re-review, explicit PASS verdict, optional exit pair - without asking questions once started.
+name: gauntlet-review
+description: Use when reviewing a branch before a PR, or when /gauntlet-review runs. Runs a builder/critic loop - fresh critics by concern, evidence rule, fix rounds proven by red tests, fresh re-review, explicit PASS verdict, optional exit pair - without asking questions once started.
 ---
 
-# Review Mine
+# Gauntlet Review
 
 A builder/critic review loop on gauntlet principles: the builder never grades its own work, every critic is a fresh agent, critics grade against a written bar, and the loop runs until the bar is met, progress stalls, or the budget ends.
 
@@ -39,7 +39,7 @@ min: 3
 
 ## 2. Setup (the only point where you may stop with a message to the user)
 0. **Recover from an interrupted run first.** If `$(git rev-parse --git-path patrick-workflows-review-ws)` exists, read the workspace path in it. If that workspace's `state.md` says `status: running` and HEAD is detached, run `git checkout -- . && git clean -fd` (this only discards what a baseline gate wrote on the detached base commit) and then `git switch <restore_branch>`. Note the recovery in the new run's report.
-1. Must be on a branch (`git symbolic-ref -q HEAD` succeeds); refuse a detached HEAD: "Check out the branch you want reviewed, then run /review-mine again." Must be inside a git repository with a clean working tree (`git status --porcelain` empty). Otherwise stop: "Commit or stash your changes, then run /review-mine again."
+1. Must be on a branch (`git symbolic-ref -q HEAD` succeeds); refuse a detached HEAD: "Check out the branch you want reviewed, then run /gauntlet-review again." Must be inside a git repository with a clean working tree (`git status --porcelain` empty). Otherwise stop: "Commit or stash your changes, then run /gauntlet-review again."
 2. Unless `--no-fix`, refuse to run on the default branch: fixes are committed to the current branch.
 3. If `superpowers:test-driven-development` is not an available skill, stop and tell the user to install the superpowers plugin.
 4. Run `bash "$SKILL_DIR/scripts/workspace.sh"`; it prints the workspace path (call it `WS` below) and records it in the repo's git dir, so every other script finds it on its own. Never prefix commands with `REVIEW_WS=...`: allow rules match commands that start with `bash`, and a prefix makes every call prompt. Write workspace files with the Write/Edit tools at `WS/...`.
@@ -148,7 +148,7 @@ The result line is also appended to `<WS>/exit-pair.txt`; cite it in the report.
    1. Outcome line: `READY` or `BLOCKED: <reason>`, depth, rounds used, dispatches used / budget.
    2. Needs your decision: numbered questions, each with a recommendation (deferred Importants, out-of-scope rulings).
    3. Unreproduced findings, security first.
-   3b. Refuted by the challenger (full only): each refuted finding with its severity, the challenger's `path:line` and reason, Criticals first, and "Reply to overrule" so the user can reopen it (standalone: a reopened finding is fixed by the user or by a new `/review-mine` run whose `--criteria` names it; under `/start`, SHIP asks).
+   3b. Refuted by the challenger (full only): each refuted finding with its severity, the challenger's `path:line` and reason, Criticals first, and "Reply to overrule" so the user can reopen it (standalone: a reopened finding is fixed by the user or by a new `/gauntlet-review` run whose `--criteria` names it; under `/start`, SHIP asks).
    4. Severity downgrades.
    5. Bars: correctness verdict per round; exit pair result and runs; with `--graded`, the graded line from 4b.9.
    6. Findings per round: raised, dropped for missing evidence, fixed (with red test names), deferred.

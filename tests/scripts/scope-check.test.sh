@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/tests/lib/assert.sh"
-SC="$ROOT/skills/review-mine/scripts/scope-check.sh"
+SC="$ROOT/skills/gauntlet-review/scripts/scope-check.sh"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 cd "$tmp" || exit 1
 git init -q -b main

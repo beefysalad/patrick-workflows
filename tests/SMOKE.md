@@ -1,4 +1,4 @@
-# /review-mine smoke test
+# /gauntlet-review smoke test
 
 Run before every release. Record results in the release commit message or a note.
 
@@ -12,7 +12,7 @@ Allow the rules listed in the README's Permissions section first, or the run wil
 
 ## Run 1: standard depth, scope and exit pair
 ```
-/review-mine main --depth standard --scope <path to this repo>/tests/fixture/scope.txt --prove "npm run e2e" --reset "npm run db:reset" --env-file .env.test --db-pattern 'test\.db$'
+/gauntlet-review main --depth standard --scope <path to this repo>/tests/fixture/scope.txt --prove "npm run e2e" --reset "npm run db:reset" --env-file .env.test --db-pattern 'test\.db$'
 ```
 Expected:
 - [ ] No questions asked after setup.
@@ -35,7 +35,7 @@ Edit `.env.test` to `DATABASE_URL=postgres://prod.example.com/app` and commit it
 bash tests/fixture/setup.sh /tmp/rm-fixture-2 && cd /tmp/rm-fixture-2
 ```
 ```
-/review-mine main --depth lite --no-fix
+/gauntlet-review main --depth lite --no-fix
 ```
 - [ ] One combined critic; no commits made; report lists findings with IDs and evidence.
 
