@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/tests/lib/assert.sh"
-GA="$ROOT/skills/review-mine/scripts/graded-ab.sh"
+GA="$ROOT/skills/gauntlet-review/scripts/graded-ab.sh"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/ref" "$tmp/ours"; echo r > "$tmp/ref/home.png"; echo o > "$tmp/ours/home.png"
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/tests/lib/assert.sh"
-CP="$ROOT/skills/review-mine/scripts/capture.sh"
+CP="$ROOT/skills/gauntlet-review/scripts/capture.sh"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 printf '/\n# comment\n/pricing/plans\n' > "$tmp/routes.txt"
 cat > "$tmp/pw-ok.sh" <<'SH'

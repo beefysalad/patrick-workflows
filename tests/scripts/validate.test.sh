@@ -13,7 +13,7 @@ out=$(check); assert_contains "$out" "no model in frontmatter: agents/ticket-fix
 fresh; sed -i.bak 's/^tools: Read, Grep, Glob$/tools: Read, Grep, Glob, Bash/' "$tmp/repo/agents/final-reviewer.md"; rm -f "$tmp/repo/agents/"*.bak
 out=$(check); assert_contains "$out" "read-only agent has write tools" "critic with Bash"
 
-fresh; echo 'Run `bash "$SKILL_DIR/scripts/nope.sh"`.' >> "$tmp/repo/skills/review-mine/SKILL.md"
+fresh; echo 'Run `bash "$SKILL_DIR/scripts/nope.sh"`.' >> "$tmp/repo/skills/gauntlet-review/SKILL.md"
 out=$(check); assert_contains "$out" "missing script scripts/nope.sh" "missing referenced script"
 
 fresh; printf 'x\n\nCo-%s: Claude Test <t@example.com>\n' "Authored-By" > "$tmp/repo/notes.txt"
@@ -22,10 +22,10 @@ out=$(check); assert_contains "$out" "attribution string in ./notes.txt" "attrib
 fresh; sed -i.bak 's/^tools: Read, Grep, Glob$/tools: Read, Grep, Glob, Edit/' "$tmp/repo/agents/task-reviewer.md"; rm -f "$tmp/repo/agents/"*.bak
 out=$(check); assert_contains "$out" "read-only agent has write tools: agents/task-reviewer.md" "task-reviewer is read-only"
 
-fresh; echo 'Run `bash "$SKILL_DIR/../ticket-workspace/scripts/state.sh" x get y`.' >> "$tmp/repo/skills/review-mine/SKILL.md"
+fresh; echo 'Run `bash "$SKILL_DIR/../ticket-workspace/scripts/state.sh" x get y`.' >> "$tmp/repo/skills/gauntlet-review/SKILL.md"
 out=$(check); assert_eq 0 $? "cross-skill reference to an existing script is valid"
 
-fresh; echo 'Run `bash "$SKILL_DIR/../ticket-workspace/scripts/nope.sh"`.' >> "$tmp/repo/skills/review-mine/SKILL.md"
+fresh; echo 'Run `bash "$SKILL_DIR/../ticket-workspace/scripts/nope.sh"`.' >> "$tmp/repo/skills/gauntlet-review/SKILL.md"
 out=$(check); assert_contains "$out" "missing script ../ticket-workspace/scripts/nope.sh" "missing cross-skill script"
 
 fresh; sed -i.bak 's/^tools: Read, Glob$/tools: Read, Glob, Write/' "$tmp/repo/agents/ui-scorer.md"; rm -f "$tmp/repo/agents/"*.bak

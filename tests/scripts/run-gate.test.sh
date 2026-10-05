@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/tests/lib/assert.sh"
-GATE="$ROOT/skills/review-mine/scripts/run-gate.sh"
+GATE="$ROOT/skills/gauntlet-review/scripts/run-gate.sh"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 export REVIEW_WS="$tmp/work space"   # deliberately contains a space
 
@@ -47,7 +47,7 @@ assert_contains "$(cat "$tmp/from pointer/logs/ptr.log")" "via-pointer" "log wri
 WR="$tmp/wt-repo"; mkdir -p "$WR" "$tmp/wt-ws"
 ( cd "$WR" && git init -q && git -c user.name=t -c user.email=t@x commit -q --allow-empty -m init && git worktree add -q "$tmp/wt-linked" -b side )
 printf '%s\n' "$tmp/wt-ws" > "$WR/.git/patrick-workflows-review-ws"
-out=$(cd "$tmp/wt-linked" && env -u REVIEW_WS bash "$ROOT/skills/review-mine/scripts/run-gate.sh" wt 10 -- "true"); code=$?
+out=$(cd "$tmp/wt-linked" && env -u REVIEW_WS bash "$ROOT/skills/gauntlet-review/scripts/run-gate.sh" wt 10 -- "true"); code=$?
 assert_eq 0 "$code" "gate in a linked worktree runs"
 assert_file "$tmp/wt-ws/logs/wt.log" "linked worktree gate logs to the main workspace"
 finish

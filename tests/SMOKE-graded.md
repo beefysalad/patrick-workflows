@@ -4,7 +4,7 @@
 d=$(mktemp -d)/ui-site && bash tests/fixture/ui-setup.sh "$d" && cd "$d"
 claude -p --plugin-dir "<repo>" --permission-mode acceptEdits \
   --allowedTools "Read(~/.patrick-workflows/**)" "Edit(~/.patrick-workflows/**)" "Bash(bash *)" "Bash(git *)" "Bash(node *)" "Bash(npx --yes playwright*)" "Bash(curl *)" "Skill" "Agent" "Read" "Grep" "Glob" "Write" "Edit" \
-  -- "/patrick-workflows:review-mine main --graded graded.md --depth standard" < /dev/null
+  -- "/patrick-workflows:gauntlet-review main --graded graded.md --depth standard" < /dev/null
 ```
 
 - [ ] Dev server started and stopped (no `node server.js` left running: `pgrep -f "node server.js"` is empty).

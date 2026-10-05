@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/tests/lib/assert.sh"
-WS="$ROOT/skills/review-mine/scripts/workspace.sh"
+WS="$ROOT/skills/gauntlet-review/scripts/workspace.sh"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 export TICKETS_HOME="$tmp/tickets home"
 

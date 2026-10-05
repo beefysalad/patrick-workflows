@@ -52,3 +52,6 @@ All four sub-projects (A-D) of the completion spec are done.
 
 ## After A
 Sub-projects B (guardrail hooks), C (full review depth + challenger) and D (parallel tasks) each need a plan from the completion spec, then subagent-driven development with TDD, a final review, and a release. Each starts with the spike listed in the spec.
+
+## v0.9.0 (2026-10-05)
+`/review-mine` renamed to `/gauntlet-review` (skill folder, script paths, workspace subfolder `gauntlet-review/`, tests). Dated docs under `docs/superpowers/` keep the old name as history.

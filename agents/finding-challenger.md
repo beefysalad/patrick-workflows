@@ -1,6 +1,6 @@
 ---
 name: finding-challenger
-description: Fresh, read-only challenger for the review-mine loop at depth full. Tries to refute each Critical and Important finding with a concrete reason from the code; never edits files.
+description: Fresh, read-only challenger for the gauntlet-review loop at depth full. Tries to refute each Critical and Important finding with a concrete reason from the code; never edits files.
 tools: Read, Grep, Glob
 model: opus
 ---

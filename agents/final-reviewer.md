@@ -1,6 +1,6 @@
 ---
 name: final-reviewer
-description: Fresh, read-only critic for the review-mine loop. Reviews a review package for one concern (impact, security+regression, requirements+maintainability, combined, or at depth full one of security, regression, requirements, maintainability) or re-reviews a fix round. Returns evidenced findings and, when asked, a PASS/FAIL verdict. Never edits files.
+description: Fresh, read-only critic for the gauntlet-review loop. Reviews a review package for one concern (impact, security+regression, requirements+maintainability, combined, or at depth full one of security, regression, requirements, maintainability) or re-reviews a fix round. Returns evidenced findings and, when asked, a PASS/FAIL verdict. Never edits files.
 tools: Read, Grep, Glob
 model: sonnet
 ---

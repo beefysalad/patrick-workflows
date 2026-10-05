@@ -1,6 +1,6 @@
 ---
 name: ticket-fixer
-description: Fix-round agent for review-mine. Takes evidenced findings, writes a failing test for each behavioral finding before fixing it, verifies visual findings by recapturing screenshots, runs the gates, and commits locally. Marks findings it cannot reproduce as unreproduced instead of guessing.
+description: Fix-round agent for gauntlet-review. Takes evidenced findings, writes a failing test for each behavioral finding before fixing it, verifies visual findings by recapturing screenshots, runs the gates, and commits locally. Marks findings it cannot reproduce as unreproduced instead of guessing.
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 model: sonnet
 ---
